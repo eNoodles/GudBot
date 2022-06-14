@@ -1,4 +1,3 @@
-require('dotenv').config();
 const { Client, Intents, MessageAttachment, MessageEmbed, MessageActionRow, MessageButton, MessageSelectMenu, Constants } = require('discord.js');
 const client = new Client({ 
     intents: [
@@ -1658,7 +1657,7 @@ process.stdin.on('data', userInput => {
     }
 });
 
-client.login(process.env.token);
+client.login(process.env.token).catch(console.error);
 
 // const http = require('http');
 // const server = http.createServer((req, res) => {
