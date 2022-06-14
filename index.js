@@ -19,8 +19,8 @@ const client = new Client({
 const Sequelize = require('sequelize');
 const sequelize = new Sequelize('mysql://u3235_x1sQdjX1UK:MX@!S+1DX2mkA^3cmGRNDaw+@138.201.82.201:3306/s3235_gudbot', {logging: false});
 const Op = Sequelize.Op;
-const Tatsu = require('tatsu');
-const weebo = new Tatsu(process.env.TATSU_TOKEN);
+// const Tatsu = require('tatsu');
+// const weebo = new Tatsu(process.env.TATSU_TOKEN);
 const dotenv = require('dotenv').config();
 //const Canvas = require('canvas');
 
@@ -1285,95 +1285,96 @@ client.on('messageCreate', async message => {
     if (message.partial) await message.fetch().catch(console.error);
     if (message.author.bot) return;
 
-    if ( message.content.startsWith("!welcome") ){
-        const errormsg = new MessageEmbed().setColor(red);
+    // if ( message.content.startsWith("!welcome") ){
+    //     const errormsg = new MessageEmbed().setColor(red);
 
-        if ( !HasRole(message.member, gmteam_rID) && !HasRole(message.member, intern_rID) ) {
-            errormsg.setDescription("You don't have the required roles to perform this action.");
-            message.channel.send(errormsg).catch(console.error);
-            return;
-        }
+    //     if ( !HasRole(message.member, gmteam_rID) && !HasRole(message.member, intern_rID) ) {
+    //         errormsg.setDescription("You don't have the required roles to perform this action.");
+    //         message.channel.send(errormsg).catch(console.error);
+    //         return;
+    //     }
         
-        const regex = message.content.match(/!welcome <@!?(\d+)>/);
-        const userId = regex[1];
-        const member = await message.guild.members.fetch(userId).catch(console.error);
-        if ( !member )
-        {
-            errormsg.setDescription('Please enter a valid user.');
-            message.channel.send({embeds: [errormsg]}).catch(console.error);
-        }
-        else
-        {
-            weebo.getProfile(userId).then( profile => 
-            {
-                if ( profile.xp < 50 ) {
-                    const diff = 50 - profile.xp;
-                    weebo.addGuildMemberScore(gm_gID, userId, diff ).then( async ranking => {
-                        if ( ranking.score >= 50 ) {
-                            const role = await message.guild.roles.cache.find((r) => r.id == lurker_rID);
-                            member.roles.add(role);
+    //     const regex = message.content.match(/!welcome <@!?(\d+)>/);
+    //     const userId = regex[1];
+    //     const member = await message.guild.members.fetch(userId).catch(console.error);
+    //     if ( !member )
+    //     {
+    //         errormsg.setDescription('Please enter a valid user.');
+    //         message.channel.send({embeds: [errormsg]}).catch(console.error);
+    //     }
+    //     else
+    //     {
+    //         weebo.getProfile(userId).then( profile => 
+    //         {
+    //             if ( profile.xp < 50 ) {
+    //                 const diff = 50 - profile.xp;
+    //                 weebo.addGuildMemberScore(gm_gID, userId, diff ).then( async ranking => {
+    //                     if ( ranking.score >= 50 ) {
+    //                         const role = await message.guild.roles.cache.find((r) => r.id == lurker_rID);
+    //                         member.roles.add(role);
 
-                            const embed = new MessageEmbed()
-                                .setColor(green)
-                                .setDescription(`<@${userId}> has successfully been given 50 xp and assigned the <@&${lurker_rID}> role.`);
+    //                         const embed = new MessageEmbed()
+    //                             .setColor(green)
+    //                             .setDescription(`<@${userId}> has successfully been given 50 xp and assigned the <@&${lurker_rID}> role.`);
 
-                            message.channel.send({embeds: [embed]}).catch(console.error);
-                        }
-                        else {
-                            errormsg.setDescription('Failed to add score.');
-                            message.channel.send({embeds: [errormsg]}).catch(console.error);
-                        }
-                    }, function(error) {
-                        console.error(error);
+    //                         message.channel.send({embeds: [embed]}).catch(console.error);
+    //                     }
+    //                     else {
+    //                         errormsg.setDescription('Failed to add score.');
+    //                         message.channel.send({embeds: [errormsg]}).catch(console.error);
+    //                     }
+    //                 }, function(error) {
+    //                     console.error(error);
         
-                        errormsg.setDescription('Failed to add score.');
-                        message.channel.send({embeds: [errormsg]}).catch(console.error);
-                    } );
-                }
-                else {
-                    const embed = new MessageEmbed()
-                        .setColor(purple)
-                        .setDescription(`<@${userId}> already has 50 xp${HasRole(member, lurker_rID) ? '.' : `, assigning <@&${lurker_rID}> role.`}`);
+    //                     errormsg.setDescription('Failed to add score.');
+    //                     message.channel.send({embeds: [errormsg]}).catch(console.error);
+    //                 } );
+    //             }
+    //             else {
+    //                 const embed = new MessageEmbed()
+    //                     .setColor(purple)
+    //                     .setDescription(`<@${userId}> already has 50 xp${HasRole(member, lurker_rID) ? '.' : `, assigning <@&${lurker_rID}> role.`}`);
 
-                    message.channel.send({embeds: [embed]}).catch(console.error);
-                }
-            }, function(error) {
-                console.error(error);
+    //                 message.channel.send({embeds: [embed]}).catch(console.error);
+    //             }
+    //         }, function(error) {
+    //             console.error(error);
 
-                errormsg.setDescription('Please enter a valid user.');
-                message.channel.send({embeds: [errormsg]}).catch(console.error);
-            } );
-        }
-    }
-    else if ( message.content.startsWith("!tatsutest") ) {
-        const errormsg = new MessageEmbed().setColor(red);
+    //             errormsg.setDescription('Please enter a valid user.');
+    //             message.channel.send({embeds: [errormsg]}).catch(console.error);
+    //         } );
+    //     }
+    // }
+    // else if ( message.content.startsWith("!tatsutest") ) {
+    //     const errormsg = new MessageEmbed().setColor(red);
 
-        const regex = message.content.match(/!tatsutest <@!?(\d+)>/);
-        const userId = regex[1];
-        const member = await message.guild.members.fetch(userId).catch(console.error);
-        if ( !member ) {
-            errormsg.setDescription('Please enter a valid user.');
-            message.channel.send({embeds: [errormsg]}).catch(console.error);
-        }
-        else {
-            weebo.getProfile(userId).then(async (profile) => {
-                const embed = new MessageEmbed()
-                    .setColor(purple)
-                    .setDescription(`${profile.username}: ${profile.xp} XP`);
-                await message.channel.send({embeds: [embed]}).catch(console.error);
-            }, console.error);
+    //     const regex = message.content.match(/!tatsutest <@!?(\d+)>/);
+    //     const userId = regex[1];
+    //     const member = await message.guild.members.fetch(userId).catch(console.error);
+    //     if ( !member ) {
+    //         errormsg.setDescription('Please enter a valid user.');
+    //         message.channel.send({embeds: [errormsg]}).catch(console.error);
+    //     }
+    //     else {
+    //         weebo.getProfile(userId).then(async (profile) => {
+    //             const embed = new MessageEmbed()
+    //                 .setColor(purple)
+    //                 .setDescription(`${profile.username}: ${profile.xp} XP`);
+    //             await message.channel.send({embeds: [embed]}).catch(console.error);
+    //         }, console.error);
 
-            await weebo.addGuildMemberScore(gm_gID, userId, 50).then(console.log, console.error);
+    //         await weebo.addGuildMemberScore(gm_gID, userId, 50).then(console.log, console.error);
 
-            weebo.getProfile(userId).then((profile) => {
-                const embed = new MessageEmbed()
-                    .setColor(purple)
-                    .setDescription(`${profile.username}: ${profile.xp} XP`);
-                message.channel.send({embeds: [embed]}).catch(console.error);
-            }, console.error);
-        }
-    }
-    else if ( message.content.startsWith('g!detector') ) {
+    //         weebo.getProfile(userId).then((profile) => {
+    //             const embed = new MessageEmbed()
+    //                 .setColor(purple)
+    //                 .setDescription(`${profile.username}: ${profile.xp} XP`);
+    //             message.channel.send({embeds: [embed]}).catch(console.error);
+    //         }, console.error);
+    //     }
+    // }
+    // else 
+    if ( message.content.startsWith('g!detector') ) {
         if ( HasRole(message.member, gmteam_rID) || HasRole(message.member, intern_rID) ) {
             const regex = message.content.match(/g!detector (add|remove|whitelist|unwhitelist|list|help)(?: ((?:<(?:@!?|#))?\S+>?))?(?: (potential|extreme))?/);
             if (regex) {
@@ -1656,7 +1657,7 @@ process.stdin.on('data', userInput => {
     }
 });
 
-client.login(process.env.CLIENT_TOKEN);
+client.login(process.env.token);
 
 const http = require('http');
 const server = http.createServer((req, res) => {
