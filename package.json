@@ -2,25 +2,22 @@
   "name": "gudbot",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "src/index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node .",
+    "test": "node src/index.js",
+    "deploy": "node deployCommands.js",
+    "clear": "node clearCommands.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/eNoodles/GudBot.git"
-  },
-  "keywords": [],
-  "author": "",
+  "author": "eNoodles",
   "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/eNoodles/GudBot/issues"
-  },
-  "homepage": "https://github.com/eNoodles/GudBot#readme",
   "dependencies": {
+    "@discordjs/builders": "^0.13.0",
+    "@discordjs/rest": "^0.4.1",
+    "discord-api-types": "^0.33.0",
     "discord.js": "^13.8.0",
-    "dotenv": "^16.0.1",
+    "dotenv": "^16.0.0",
     "mysql2": "^2.3.3",
-    "sequelize": "^6.20.1"
+    "sequelize": "^6.19.0"
   }
 }
