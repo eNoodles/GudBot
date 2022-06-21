@@ -1,13 +1,12 @@
-const { Client, MessageActionRow, Modal, ButtonInteraction, TextInputComponent } = require('discord.js');
-const utils = require('../utils.js');
+const { MessageActionRow, Modal, ButtonInteraction, TextInputComponent } = require('discord.js');
+const utils = require('../../utils');
 
 module.exports = {
 	name: 'editSentMessage',
     /**
-     * @param {Client} client 
      * @param {ButtonInteraction} interaction 
      */
-	async execute(client, interaction) {
+	async execute(interaction) {
         const args = interaction.customId.split('|');
         const message_id = args[1];
 

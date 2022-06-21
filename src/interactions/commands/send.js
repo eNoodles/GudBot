@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { Client, CommandInteraction, MessageButton, MessageActionRow } = require('discord.js');
-const utils = require('../utils.js');
+const { CommandInteraction, MessageButton, MessageActionRow } = require('discord.js');
+const utils = require('../../utils');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -11,10 +11,9 @@ module.exports = {
             .setDescription('Message content to be sent')
             .setRequired(true)),
     /**
-     * @param {Client} client 
      * @param {CommandInteraction} interaction 
      */
-	async execute(client, interaction) {
+	async execute(interaction) {
         const message = await interaction.channel.send({ content: interaction.options.getString('text') });
 
         const edit_button = new MessageButton()

@@ -1,5 +1,5 @@
 require('dotenv').config();
-const utils = require('./src/utils.js');
+const utils = require('./src/utils');
 const { Client, Intents } = require('discord.js');
 const client = new Client({ 
     intents: [
@@ -15,7 +15,8 @@ client.once('ready', () => {
         guild.commands.set([])
             .then(console.log('Successfully cleared application commands.'))
             .catch(console.error);
-    });
+    })
+    .catch(console.error);
 
     process.exit();
 });
