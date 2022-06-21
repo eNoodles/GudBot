@@ -17,6 +17,4 @@ client.once('ready', () => {
             .catch(console.error);
     })
     .catch(console.error);
-
-    process.exit();
 });
