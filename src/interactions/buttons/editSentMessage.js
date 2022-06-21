@@ -2,7 +2,6 @@ const { MessageActionRow, Modal, ButtonInteraction, TextInputComponent } = requi
 const utils = require('../../utils');
 
 module.exports = {
-	name: 'editSentMessage',
     /**
      * @param {ButtonInteraction} interaction 
      */

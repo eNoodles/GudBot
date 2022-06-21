@@ -2,7 +2,6 @@ const { MessageEmbed, MessageButton, MessageActionRow, ModalSubmitInteraction } 
 const utils = require('../../utils');
 
 module.exports = {
-	name: 'jailMember',
     /**
      * @param {ModalSubmitInteraction} interaction 
      */

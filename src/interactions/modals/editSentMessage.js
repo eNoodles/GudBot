@@ -2,7 +2,6 @@ const { MessageButton, MessageActionRow, ModalSubmitInteraction } = require('dis
 const utils = require('../../utils');
 
 module.exports = {
-	name: 'editSentMessage',
     /**
      * @param {ModalSubmitInteraction} interaction 
      */

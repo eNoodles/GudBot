@@ -4,7 +4,8 @@ module.exports = {
 	name: 'interactionCreate',
 	async execute(client, interaction) {
 
-		const { commandName, customId } = interaction;
+		let { commandName, customId } = interaction;
+		commandName.replace(' ', '_');
 
 		const response = 
 			interaction.isCommand() ? client.commands.get(commandName) :
