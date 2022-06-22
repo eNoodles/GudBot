@@ -12,13 +12,34 @@ module.exports = {
             .setRequired(true))
         .addStringOption(option => option
             .setName('reason')
-            .setDescription('Reason for jailing.')),
+            .setDescription('Reason for jailing.'))
+        .addIntegerOption(option => option
+            .setName('minutes')
+            .setDescription('Minutes of jailtime before release.')
+            .setMinValue(0)
+            .setMaxValue(60))
+        .addIntegerOption(option => option
+            .setName('hours')
+            .setDescription('Hours of jailtime before release.')
+            .setMinValue(0)
+            .setMaxValue(24))
+        .addIntegerOption(option => option
+            .setName('days')
+            .setDescription('Days of jailtime before release.')
+            .setMinValue(0)
+            .setMaxValue(60)),
     /**
      * @param {CommandInteraction} interaction 
      */
 	async execute(interaction) {
         const member = interaction.options.getMember('user');
         const reason = interaction.options.getString('reason');
+        
+        const minutes = interaction.options.getInteger('minutes') || 0;
+        const hours = interaction.options.getInteger('hours') || 0;
+        const days = interaction.options.getInteger('days') || 0;
+
+        const duration = utils.getDurationSeconds(minutes, hours, days);
 
         //no jailing admins
         if (utils.isAdmin(member) || !member.manageable) {  
@@ -27,7 +48,7 @@ module.exports = {
         }
 
         try {
-            const jail_message = await utils.jailMember(member, interaction.user, reason);
+            const jail_message = await utils.jailMember(member, interaction.user, reason, duration);
             const channel = await interaction.client.channels.fetch(utils.ids.records_ch);
             const sent = await channel.send(jail_message);
 

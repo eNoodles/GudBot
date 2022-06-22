@@ -87,17 +87,28 @@ function createErrorEmbed(message, footer = 'User satisfaction is not guaranteed
 }
 
 /**
+ * @param {number} minutes 
+ * @param {number} hours 
+ * @param {number} days 
+ * @returns {number|null} Combined duration in seconds.
+ */
+function getDurationSeconds(minutes, hours, days) {
+    return minutes || hours || days ? days * 86400 + hours * 3600 + minutes * 60 : null;
+}
+
+/**
  * @param {GuildMember} member Member being jailed
  * @param {User} jailer_user User who initiated the interaction
- * @param {string} reason Reason for jailing (displayed in record)
+ * @param {string} [reason] Reason for jailing (displayed in record)
+ * @param {Number} [duration] Jail duration in seconds
  * @returns MessageOptions to send in criminal-records
  */
-async function jailMember(member, jailer_user, reason) {
+async function jailMember(member, jailer_user, reason, duration) {
 
     const offender_id = member.id;
     const jailer_id = jailer_user.id;
     const jail_timestamp = Math.floor(new Date().getTime() / 1000);
-    const release_timestamp = null;
+    const release_timestamp = duration ? jail_timestamp + duration : null;
 
     const roles = member.roles.cache;
     const role_ids = []; //will be used in jail embed message
@@ -211,6 +222,7 @@ async function jailMember(member, jailer_user, reason) {
 }
 
 /**
+ * do not export
  * @param {string} content 
  * @returns {string|boolean} Modified content if censoring had to be done, otherwise false boolean
  */
@@ -233,6 +245,7 @@ function censor(content) {
 }
 
 /**
+ * do not export
  * @param {TextChannel} channel
  * @returns {Webhook} Fetched or newly created GudBot-owned webhook
  */
@@ -299,6 +312,7 @@ module.exports = {
     isAdmin,
     getMemberFullName,
     createErrorEmbed,
+    getDurationSeconds,
     jailMember,
     censorMessage
 };

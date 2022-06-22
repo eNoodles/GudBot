@@ -10,6 +10,12 @@ module.exports = {
         const member = await interaction.guild.members.fetch(args[1]);
         const reason = interaction.fields.getTextInputValue('jail_reason');
 
+        const minutes = parseInt(interaction.fields.getTextInputValue('jail_minutes'), 10) || 0;
+        const hours = parseInt(interaction.fields.getTextInputValue('jail_hours'), 10) || 0;
+        const days = parseInt(interaction.fields.getTextInputValue('jail_days'), 10) || 0;
+
+        const duration = utils.getDurationSeconds(minutes, hours, days);
+
         //no jailing admins
         if (utils.isAdmin(member) || !member.manageable) {  
             await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
@@ -17,7 +23,7 @@ module.exports = {
         }
 
         try {
-            const jail_message = await utils.jailMember(member, interaction.user, reason);
+            const jail_message = await utils.jailMember(member, interaction.user, reason, duration);
             const channel = await interaction.client.channels.fetch(utils.ids.records_ch);
             const sent = await channel.send(jail_message);
 
