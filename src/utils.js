@@ -19,6 +19,7 @@ const ids = {
     muted_role: '606870055770390538',
     blankicon_role: '894731175216701450',
 };
+module.exports.ids = ids;
 
 const colors = {
     red: 16711680,
@@ -26,6 +27,7 @@ const colors = {
     gray: 10066329,
     purple: 10434242,
 };
+module.exports.colors = colors;
 
 const buttons = {
     blurple: 1, //PRIMARY
@@ -34,11 +36,13 @@ const buttons = {
     red: 4,     //DANGER
     link: 5,    //LINK
 };
+module.exports.buttons = buttons;
 
 const textinput = {
     short: 1,
     long: 2
 };
+module.exports.textinput = textinput;
 
 const regex = /ni+gg+(?:a|а|e|е|3)+r?|tr(?:a|а)+nn+(?:y|у|i+(?:e|е))|f(?:a|а)+gg*(?:o|о)*t?/i;
 const webhooks_cache = new Map();
@@ -54,6 +58,7 @@ function hasRole(member, role) {
         r.name === role
     );
 }
+module.exports.hasRole = hasRole;
 
 /**
  * @param {GuildMember} member 
@@ -62,6 +67,7 @@ function hasRole(member, role) {
 function isAdmin(member) {
     return member?.permissions.has(Permissions.FLAGS.ADMINISTRATOR);
 }
+module.exports.isAdmin = isAdmin;
 
 /**
  * @param {GuildMember} member 
@@ -73,6 +79,7 @@ function getMemberFullName(member) {
 
     return `${member.nickname ? `${member.nickname} (${member.user.username})` : member.user.username}`;
 }
+module.exports.getMemberFullName = getMemberFullName;
 
 /**
  * @param {string} message Description of embed.
@@ -85,6 +92,7 @@ function createErrorEmbed(message, footer = 'User satisfaction is not guaranteed
         .setFooter({text: footer})
         .setColor(colors.red);
 }
+module.exports.createErrorEmbed = createErrorEmbed;
 
 /**
  * @param {Number} min 
@@ -102,6 +110,7 @@ function generateIntegerChoices(min=0, max=9) {
 
     return temp_array;
 }
+module.exports.generateIntegerChoices = generateIntegerChoices;
 
 /**
  * @param {number} minutes 
@@ -112,6 +121,7 @@ function generateIntegerChoices(min=0, max=9) {
 function getDurationSeconds(minutes, hours, days) {
     return minutes || hours || days ? days * 86400 + hours * 3600 + minutes * 60 : null;
 }
+module.exports.getDurationSeconds = getDurationSeconds;
 
 /**
  * @param {GuildMember} member Member being jailed
@@ -127,29 +137,28 @@ async function jailMember(member, jailer_user, reason, duration) {
     const jail_timestamp = Math.floor(new Date().getTime() / 1000);
     const release_timestamp = duration ? jail_timestamp + duration : null;
 
-    const roles = member.roles.cache;
+    const roles = member.roles.cache.filter(role => role.id !== ids.guild && role.id !== ids.jailed_role); //ignore base @@everyone role and jailed role
     let roles_str = ''; //for embed
 
     //clear rolebank of member's previously saved roles (just in case)
     await saved_roles.destroy({ where: { user_id: member.id } });
 
     //save member's roles in db
-    //dont save base @@everyone role and jailed role
-    roles.filter(role => role.id !== ids.guild && role.id !== ids.jailed_role).forEach( async role => {
+    roles.forEach( async role => {
         await saved_roles.create({
             user_id: member.id,
             role_id: role.id
         });
 
         //format role list for embed
-        roles_str += `<@&${role_ids[i]}> `;
+        roles_str += `<@&${role.id}> `;
     });
 
     //count prior offenses
     const prior_offenses = await jail_records.count({ where: { offender_id: member.id } });
 
     //save offender id, jailer id, reason in jail_records
-    await jail_records.create({
+    const jail_record = await jail_records.create({
         offender_id: offender_id,
         jailer_id: jailer_id,
         reason: reason,
@@ -209,22 +218,22 @@ async function jailMember(member, jailer_user, reason, duration) {
     const unjail_button = new MessageButton()
         .setLabel('Unjail')
         .setStyle(buttons.green)
-        .setCustomId('test1');
+        .setCustomId(`recordsUnjail|${jail_record.id}`);
 
     const timer_button = new MessageButton()
         .setLabel('Set timer')
         .setStyle(buttons.blurple)
-        .setCustomId('test3');
+        .setCustomId(`recordsSetJailTime|${jail_record.id}`);
     
     const edit_button = new MessageButton()
         .setLabel('Edit')
         .setStyle(buttons.gray)
-        .setCustomId('test2');
+        .setCustomId(`recordsEdit|${jail_record.id}`);
 
     const del_button = new MessageButton()
         .setLabel('Delete record')
         .setStyle(buttons.red)
-        .setCustomId('test4')
+        .setCustomId(`recordsDelete|${jail_record.id}`)
         .setDisabled();
 
     return {
@@ -232,9 +241,9 @@ async function jailMember(member, jailer_user, reason, duration) {
         components: [new MessageActionRow().addComponents([unjail_button, timer_button, edit_button, del_button])]
     };
 }
+module.exports.jailMember = jailMember;
 
 /**
- * do not export
  * @param {string} content 
  * @returns {string|boolean} Modified content if censoring had to be done, otherwise false boolean
  */
@@ -257,7 +266,6 @@ function censor(content) {
 }
 
 /**
- * do not export
  * @param {TextChannel} channel
  * @returns {Webhook} Fetched or newly created GudBot-owned webhook
  */
@@ -314,18 +322,4 @@ async function censorMessage(message) {
         }
     }
 }
-
-module.exports = {
-    ids,
-    colors,
-    buttons,
-    textinput,
-    hasRole,
-    isAdmin,
-    getMemberFullName,
-    createErrorEmbed,
-    generateIntegerChoices,
-    getDurationSeconds,
-    jailMember,
-    censorMessage
-};
+module.exports.censorMessage = censorMessage;
