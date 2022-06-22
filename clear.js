@@ -13,7 +13,10 @@ client.login(process.env.token);
 client.once('ready', () => {
     client.guilds.fetch(utils.ids.guild).then(guild => {
         guild.commands.set([])
-            .then(console.log('Successfully cleared application commands.'))
+            .then(() => {
+                console.log('Successfully cleared application commands.');
+                process.exit();
+            })
             .catch(console.error);
     })
     .catch(console.error);
