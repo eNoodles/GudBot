@@ -1,7 +1,6 @@
 const utils = require('../utils');
 
 module.exports = {
-	name: 'interactionCreate',
 	async execute(client, interaction) {
 
 		const { commandName, customId } = interaction;

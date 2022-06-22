@@ -1,7 +1,6 @@
 const { censorMessage } = require('../utils');
 
 module.exports = {
-	name: 'messageCreate',
 	async execute(client, message) {
         if (message.author.bot) return;
 
