@@ -1,4 +1,4 @@
-const { MessageButton, MessageEmbed, Permissions, GuildMember, MessageActionRow, TextChannel, Webhook, Message, User } = require('discord.js');
+const { MessageButton, MessageEmbed, Permissions, GuildMember, MessageActionRow, TextChannel, Webhook, Message, User, Collection } = require('discord.js');
 const { jail_records, saved_roles } = require('./database/dbObjects');
 
 const ids = {
@@ -87,6 +87,23 @@ function createErrorEmbed(message, footer = 'User satisfaction is not guaranteed
 }
 
 /**
+ * @param {Number} min 
+ * @param {Number} max 
+ * @returns Array of choices for SlashCommandIntegerOption
+ */
+function generateIntegerChoices(min=0, max=9) {
+    const temp_array = [];
+    const iterations = max - min + 1;
+
+    for (let i = 0; i < iterations; i++) {
+        let val = min + i;
+        temp_array[i] = { name: `${val}`, value: val };
+    }
+
+    return temp_array;
+}
+
+/**
  * @param {number} minutes 
  * @param {number} hours 
  * @param {number} days 
@@ -111,7 +128,7 @@ async function jailMember(member, jailer_user, reason, duration) {
     const release_timestamp = duration ? jail_timestamp + duration : null;
 
     const roles = member.roles.cache;
-    const role_ids = []; //will be used in jail embed message
+    let roles_str = ''; //for embed
 
     //clear rolebank of member's previously saved roles (just in case)
     await saved_roles.destroy({ where: { user_id: member.id } });
@@ -124,7 +141,8 @@ async function jailMember(member, jailer_user, reason, duration) {
             role_id: role.id
         });
 
-        role_ids.push( role.id );
+        //format role list for embed
+        roles_str += `<@&${role_ids[i]}> `;
     });
 
     //count prior offenses
@@ -147,12 +165,6 @@ async function jailMember(member, jailer_user, reason, duration) {
 
     //if all roles successfully removed, add jailed role
     await member.roles.add(ids.jailed_role, audit_log_msg);
-
-    //format list of roles
-    let roles_str = '';
-    for (let i = 0; i < role_ids.length; i++) {
-        roles_str += `<@&${role_ids[i]}> `;
-    }
 
     //create embed to be sent in #criminal-records
     const embed = new MessageEmbed()
@@ -312,6 +324,7 @@ module.exports = {
     isAdmin,
     getMemberFullName,
     createErrorEmbed,
+    generateIntegerChoices,
     getDurationSeconds,
     jailMember,
     censorMessage

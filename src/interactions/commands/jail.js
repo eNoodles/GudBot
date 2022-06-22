@@ -9,25 +9,33 @@ module.exports = {
         .addUserOption(option => option
             .setName('user')
             .setDescription('Server member to jail.')
-            .setRequired(true))
+            .setRequired(true)
+        )
         .addStringOption(option => option
             .setName('reason')
-            .setDescription('Reason for jailing.'))
+            .setDescription('Reason for jailing.')
+        )
         .addIntegerOption(option => option
             .setName('minutes')
             .setDescription('Minutes of jailtime before release.')
-            .setMinValue(0)
-            .setMaxValue(60))
+            .setMinValue(1)
+            .setMaxValue(60)
+        )
         .addIntegerOption(option => option
             .setName('hours')
             .setDescription('Hours of jailtime before release.')
-            .setMinValue(0)
-            .setMaxValue(24))
+            .setMinValue(1)
+            .setMaxValue(24)
+            .setChoices( ...utils.generateIntegerChoices(1, 24) )
+        )
         .addIntegerOption(option => option
             .setName('days')
             .setDescription('Days of jailtime before release.')
-            .setMinValue(0)
-            .setMaxValue(60)),
+            .setMinValue(1)
+            .setMaxValue(24)
+            .setChoices( ...utils.generateIntegerChoices(1, 24) )
+        ),
+
     /**
      * @param {CommandInteraction} interaction 
      */
