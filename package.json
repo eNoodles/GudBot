@@ -6,8 +6,9 @@
   "scripts": {
     "start": "node .",
     "test": "node src/index.js",
-    "deploy": "node deployCommands.js",
-    "clear": "node clearCommands.js"
+    "deploy": "node deploy.js",
+    "clear": "node clear.js",
+    "sync": "node dbSync.js"
   },
   "author": "eNoodles",
   "license": "ISC",

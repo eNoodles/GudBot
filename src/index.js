@@ -42,7 +42,10 @@ for (const file of event_files) {
 
     for (const file of interaction_files) {
         const file_export = require(`./interactions/${type}/${file}`);
-        client[type].set(file.substring(0, file.lastIndexOf('.')), file_export);
+
+        //some context menu command names have spaces, which are replaced with underscores in the filenames
+        const file_name = file.substring(0, file.lastIndexOf('.') ).replace('_', ' ');
+        client[type].set(file_name, file_export);
     }
 });
 
