@@ -1,17 +1,59 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
-const { UserContextMenuInteraction, TextInputComponent, Modal, MessageActionRow } = require('discord.js');
+const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionRow } = require('discord.js');
 const utils = require('../../utils');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
-        .setName('Jail user')
-        .setType(2),
+        .setName('Jail author')
+        .setType(3),
 
     /**
-     * @param {UserContextMenuInteraction} interaction 
+     * @param {MessageContextMenuInteraction} interaction 
      */
     async execute(interaction) {
-        const member = interaction.targetMember;
+        const message = interaction.targetMessage;
+        let member = message.member;
+
+        //if user clicked on a webhook
+        if (message.webhookId) {
+            //first check cache
+            const author_id = utils.censored_cache.get(message.id);
+
+            if (author_id) {
+                member = await interaction.guild.members.fetch(author_id);
+            }
+            //if webhook message is not in cache anymore, search for members with the same name
+            else {
+                const found_members = await interaction.guild.members.search({ query: message.author.username, limit: 100}); //idfk how limit works
+
+                let embed_desc = 'This message was sent by a webhook, and data containing information about the original message author is no longer available.';
+                if (found_members) {
+                    embed_desc += '\n\n**Perhaps you would like to jail:**\n';
+
+                    found_members.forEach(member => {
+                        embed_desc += `<@${member.id}>\n`;
+                    });
+                }
+
+                interaction.reply({
+                    embeds: [utils.createErrorEmbed(embed_desc)], 
+                    ephemeral: true
+                });
+    
+                return;
+            }
+        }
+
+        //member was not found
+        //this means the message author either left the server, or it is a webhook message that could not be found in cache
+        if (!member) {
+            interaction.reply({
+                embeds: [utils.createErrorEmbed(`Something has gone wrong, <@${message.author.id}> is not a member of this server.`)], 
+                ephemeral: true
+            });
+
+            return;
+        }
 
         //no jail overrides
         if (member.roles.cache.has(utils.ids.jailed_role)) {
@@ -57,7 +99,7 @@ module.exports = {
             .setStyle(1);
 
         const modal = new Modal()
-            .setCustomId(`jailMember|${member.id}`)
+            .setCustomId(`jailMember|${member.id}|${message.id}`)
             .setTitle(`Jail ${member.displayName}?`)
             .addComponents(
                 new MessageActionRow().addComponents(jail_reason),

@@ -18,7 +18,7 @@ module.exports = {
                 .setLabel('New message content:')
                 .setValue(message.content)
                 .setMinLength(1)
-                .setStyle(utils.textinput.long);
+                .setStyle(2);
 
             const modal = new Modal()
                 .setCustomId(`editSentMessage|${message_id}`)

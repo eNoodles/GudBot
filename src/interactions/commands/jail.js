@@ -41,6 +41,16 @@ module.exports = {
      */
 	async execute(interaction) {
         const member = interaction.options.getMember('user');
+
+        //no jail overrides
+        if (member.roles.cache.has(utils.ids.jailed_role)) {
+            interaction.reply({
+                embeds: [utils.createErrorEmbed(`<@${member.id}> is already jailed.`)], 
+                ephemeral: true
+            });
+            return;
+        }
+
         const reason = interaction.options.getString('reason');
         
         const minutes = interaction.options.getInteger('minutes') || 0;
@@ -50,14 +60,14 @@ module.exports = {
         const duration = utils.getDurationSeconds(minutes, hours, days);
 
         //no jailing admins
-        if (utils.isAdmin(member) || !member.manageable) {  
+        if (!member.manageable || utils.isAdmin(member)) {  
             await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
             return;
         }
 
         try {
             const jail_message = await utils.jailMember(member, interaction.user, reason, duration);
-            const channel = await interaction.client.channels.fetch(utils.ids.records_ch);
+            const channel = await interaction.guild.channels.fetch(utils.ids.records_ch);
             const sent = await channel.send(jail_message);
 
             //send interaction reply confirming success

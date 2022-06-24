@@ -14,7 +14,6 @@ module.exports = {
 
 		if (!response) return;
 		
-		//pass client to access database models
 		response.execute(interaction)
 			.catch(e => {
 				console.error(e);

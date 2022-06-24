@@ -1,9 +1,12 @@
 const { MessageButton, MessageEmbed, Permissions, GuildMember, MessageActionRow, TextChannel, Webhook, Message, User, Collection } = require('discord.js');
 const { jail_records, saved_roles } = require('./database/dbObjects');
 
+const webhooks_cache = new Map(); //K: Snowflake representing channel id, V: gudbot's webhook for that channel
+const censored_cache = new Map(); //K: Snowflake representing message id, V: Snowflake representing original message author's id 
+
 const ids = {
     client: '822565220190650379',
-    guild: '822148574032298064', //'364164445657890816',
+    guild: '822148574032298064',
 
     intro_ch: '883882213714837514',
     rules_ch: '552982479212904448',
@@ -11,15 +14,34 @@ const ids = {
     dldb_ch: '607310581053128717',
     mod_ch: '860181373468540948',
     star_ch: '888515334015942676',
-    records_ch: '986712503935447130', //746696906314612807
+    records_ch: '986712503935447130',
 
     lurker_role: '523883593978609704',
     gmteam_role: '409531885119864832',
-    jailed_role: '865603749393334283', //603983150011514979
+    jailed_role: '865603749393334283',
     muted_role: '606870055770390538',
     blankicon_role: '894731175216701450',
 };
-module.exports.ids = ids;
+
+// GudMods
+// const ids = {
+//     client: '822565220190650379',
+//     guild: '364164445657890816',
+
+//     intro_ch: '883882213714837514',
+//     rules_ch: '552982479212904448',
+//     dl_ch: '486202559951011870',
+//     dldb_ch: '607310581053128717',
+//     mod_ch: '860181373468540948',
+//     star_ch: '888515334015942676',
+//     records_ch: '746696906314612807',
+
+//     lurker_role: '523883593978609704',
+//     gmteam_role: '409531885119864832',
+//     jailed_role: '603983150011514979',
+//     muted_role: '606870055770390538',
+//     blankicon_role: '894731175216701450',
+// };
 
 const colors = {
     red: 16711680,
@@ -27,7 +49,6 @@ const colors = {
     gray: 10066329,
     purple: 10434242,
 };
-module.exports.colors = colors;
 
 const buttons = {
     blurple: 1, //PRIMARY
@@ -36,16 +57,6 @@ const buttons = {
     red: 4,     //DANGER
     link: 5,    //LINK
 };
-module.exports.buttons = buttons;
-
-const textinput = {
-    short: 1,
-    long: 2
-};
-module.exports.textinput = textinput;
-
-const regex = /ni+gg+(?:a|а|e|е|3)+r?|tr(?:a|а)+nn+(?:y|у|i+(?:e|е))|f(?:a|а)+gg*(?:o|о)*t?/i;
-const webhooks_cache = new Map();
 
 /**
  * @param {GuildMember} member 
@@ -58,7 +69,6 @@ function hasRole(member, role) {
         r.name === role
     );
 }
-module.exports.hasRole = hasRole;
 
 /**
  * @param {GuildMember} member 
@@ -67,7 +77,6 @@ module.exports.hasRole = hasRole;
 function isAdmin(member) {
     return member?.permissions.has(Permissions.FLAGS.ADMINISTRATOR);
 }
-module.exports.isAdmin = isAdmin;
 
 /**
  * @param {GuildMember} member 
@@ -79,7 +88,6 @@ function getMemberFullName(member) {
 
     return `${member.nickname ? `${member.nickname} (${member.user.username})` : member.user.username}`;
 }
-module.exports.getMemberFullName = getMemberFullName;
 
 /**
  * @param {string} message Description of embed.
@@ -92,7 +100,6 @@ function createErrorEmbed(message, footer = 'User satisfaction is not guaranteed
         .setFooter({text: footer})
         .setColor(colors.red);
 }
-module.exports.createErrorEmbed = createErrorEmbed;
 
 /**
  * @param {Number} min 
@@ -110,7 +117,6 @@ function generateIntegerChoices(min=0, max=9) {
 
     return temp_array;
 }
-module.exports.generateIntegerChoices = generateIntegerChoices;
 
 /**
  * @param {number} minutes 
@@ -121,7 +127,6 @@ module.exports.generateIntegerChoices = generateIntegerChoices;
 function getDurationSeconds(minutes, hours, days) {
     return minutes || hours || days ? days * 86400 + hours * 3600 + minutes * 60 : null;
 }
-module.exports.getDurationSeconds = getDurationSeconds;
 
 /**
  * @param {GuildMember} member Member being jailed
@@ -163,7 +168,8 @@ async function jailMember(member, jailer_user, reason, duration) {
         jailer_id: jailer_id,
         reason: reason,
         jail_timestamp: jail_timestamp,
-        release_timestamp: release_timestamp
+        release_timestamp: release_timestamp,
+        url: null //set upon unjailing
     });
 
     //display in audit log
@@ -221,7 +227,7 @@ async function jailMember(member, jailer_user, reason, duration) {
         .setCustomId(`recordsUnjail|${jail_record.id}`);
 
     const timer_button = new MessageButton()
-        .setLabel('Set timer')
+        .setLabel('Set time')
         .setStyle(buttons.blurple)
         .setCustomId(`recordsSetJailTime|${jail_record.id}`);
     
@@ -241,29 +247,6 @@ async function jailMember(member, jailer_user, reason, duration) {
         components: [new MessageActionRow().addComponents([unjail_button, timer_button, edit_button, del_button])]
     };
 }
-module.exports.jailMember = jailMember;
-
-/**
- * @param {string} content 
- * @returns {string|boolean} Modified content if censoring had to be done, otherwise false boolean
- */
-function censor(content) {
-    let modified = false;
-
-    let uncensored;
-    while ( uncensored = content.match(regex) ) { //assignment condition (I want to check if a match is found and store it for further use)
-
-        let censored = uncensored[0][0]; //first char of first element of regex array
-        for (let i = 1; i < uncensored[0].length; i++) { //for every char after the first, add one star
-            censored += '\\*'; //⋆
-        }
-
-        content = content.replace(uncensored[0], censored);
-        modified = true; //signifies that content was modified
-    }
-
-    return modified ? content : false;
-}
 
 /**
  * @param {TextChannel} channel
@@ -280,46 +263,36 @@ async function fetchOrCreateHook(channel) {
 }
 
 /**
- * Checks if message should be censored, if necessary deletes message and sends censored version through webhook.
- * @param {Message} message
+ * Finds image urls in text content, removes them and spits them out as an array
+ * @param {string} content Original message content
  */
-async function censorMessage(message) {
+function extractImageUrls(content) {
+    let found = false;
+    const urls = [];
 
-    let censored = censor(message.content); //this is either modified message content or simply false
-    if (censored) {
-        //check cache for webhook before trying to fetch/create it (performance)
-        const hook = webhooks_cache.get(message.channel.id) || await fetchOrCreateHook(message.channel);
+    //find image urls (including surrounding whitespace), add the url itself to array and replace entire match with nothing
+    content = content.replace(/\s*(https?:\/\/\S+\.(?:png|jpg|jpeg|webp)\S*)\s*/ig, (match, url) => {
+        urls.push(url);
+        found = true;
+        return '';
+    });
 
-        if (message.type === 'REPLY') {
-            const replied_msg = await message.fetchReference();
-            if (replied_msg) {
-                censored = `> [**${replied_msg.member?.displayName || replied_msg.author.username}** ${replied_msg.content || '*Click to see attachment*'}](${replied_msg.url})\n${censored}`; //🖻🗎
-            }
-        }
-
-        let censored_followup;
-        if (censored.length > 1500) {
-            censored_followup = censored.substring(1500);
-            censored = censored.substring(0, 1500);
-        }
-
-        //delete user's original uncensored message
-        message.delete().catch(console.error);
-
-        //send censored message through webhook, mimicing user's name and pfp
-        hook.send({
-            content: censored,
-            username: message.member.displayName,
-            avatarURL: message.member.displayAvatarURL()
-        }).catch(console.error);
-
-        if (censored_followup) {
-            hook.send({
-                content: censored_followup,
-                username: message.member.displayName,
-                avatarURL: message.member.displayAvatarURL()
-            }).catch(console.error);
-        }
-    }
+    return found ? { content: content, urls: urls } : false;
 }
-module.exports.censorMessage = censorMessage;
+
+module.exports = {
+    webhooks_cache,
+    censored_cache,
+    ids,
+    colors,
+    buttons,
+    hasRole,
+    isAdmin,
+    getMemberFullName,
+    createErrorEmbed,
+    generateIntegerChoices,
+    getDurationSeconds,
+    jailMember,
+    fetchOrCreateHook,
+    extractImageUrls
+}
