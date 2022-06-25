@@ -1,7 +1,16 @@
 require('dotenv').config();
 const fs = require('fs');
 const Sequelize = require('sequelize');
-const sequelize = new Sequelize(process.env.db, { logging: false, define: { freezeTableName: true } });
+const sequelize = new Sequelize(
+    process.env.db, 
+    {
+        logging: false,
+        define: {
+            freezeTableName: true,
+            charset: 'utf8mb4'
+        }
+    }
+);
 
 const model_files = fs.readdirSync(`./src/database/models/`).filter(file => file.endsWith('.js'));
 
