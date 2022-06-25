@@ -1,5 +1,5 @@
 const { MessageButton, MessageEmbed, Permissions, GuildMember, MessageActionRow, TextChannel, Webhook, User } = require('discord.js');
-const { jail_records, saved_roles } = require('./database/dbObjects');
+const { jail_records, saved_roles, blacklist } = require('./database/dbObjects');
 
 const webhooks_cache = new Map(); //K: Snowflake representing channel id, V: gudbot's webhook for that channel
 const censored_cache = new Map(); //K: Snowflake representing message id, V: Snowflake representing original message author's id 
@@ -317,6 +317,25 @@ function getGuildUploadLimit(guild) {
     return guild.premiumTier === 3 ? 100000000 : guild.premiumTier === 2 ? 50000000 : 8000000;
 }
 
+let blacklist_regexp = new RegExp('', 'ig');
+
+/**
+ * Finds all blacklist table entries and regenerates blacklist_regexp
+ */
+function generateBlacklistRegExp() {
+    blacklist.findAll().then(entries => {
+        const regexp_source = entries.map(e => e.word).join('|');
+        blacklist_regexp = new RegExp(regexp_source, 'ig');
+    }).catch(console.error);
+}
+
+/**
+ * @returns cached blacklist regular expression
+ */
+function getBlacklistRegex() {
+    return blacklist_regexp;
+}
+
 module.exports = {
     webhooks_cache,
     censored_cache,
@@ -335,5 +354,7 @@ module.exports = {
     findLastSpaceIndex,
     addEllipsisDots,
     trimWhitespace,
-    getGuildUploadLimit
+    getGuildUploadLimit,
+    generateBlacklistRegExp,
+    getBlacklistRegex
 }
