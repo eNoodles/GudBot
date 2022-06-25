@@ -46,10 +46,25 @@ async function censorMessage(message) {
 
     try {
 
+        //append fake reply to beginning of censored message content
         if (message.type === 'REPLY') {
+
             const replied_msg = await message.fetchReference();
             if (replied_msg) {
-                censored = `> [**${replied_msg.member?.displayName || replied_msg.author.username}** ${replied_msg.content || '*Click to see attachment*'}](${replied_msg.url})\n${censored}`; //🖻🗎
+                //if there is no message content, then it must have been an attachment-only message
+                let reply_content = replied_msg.content || '*Click to see attachment*'; //🖻🗎
+
+                if (reply_content.length > 500) {
+                    const cutoff_index = utils.findLastSpaceIndex(reply_content, 500);
+                    reply_content = reply_content.substring(0, cutoff_index);
+                    reply_content = utils.trimWhitespace(reply_content);
+                    reply_content = utils.addEllipsisDots(reply_content);
+                }
+
+                //newlines break the quote block so we must reinsert '> ' on each line
+                reply_content = reply_content.replace('\n', '\n> ');
+
+                censored = `> [**${replied_msg.member?.displayName || replied_msg.author.username}** ${reply_content}](${replied_msg.url})\n${censored}`;
             }
         }
 
@@ -59,13 +74,13 @@ async function censorMessage(message) {
         const max_length = 2000 - star_count;
         if (censored.length > max_length) {
 
-            const last_nline_index = censored.lastIndexOf('\n', max_length);
-            const last_space_index = censored.lastIndexOf(' ', max_length);
-            //prioritize last newline over last space, if both not found- fallback to max_length
-            const cutoff_index = last_nline_index !== -1 ? last_nline_index : last_space_index !== -1 ? last_space_index : max_length;
+            const cutoff_index = utils.findLastSpaceIndex(censored, max_length);
+            censored_followup = censored.substring( cutoff_index );
 
             //if cutoff point was a newline, add fake bold ** ** to preserve it in the beginning of the followup message
-            censored_followup = `${cutoff_index === last_nline_index ? '** **' : ''}${censored.substring( cutoff_index )}`;
+            if (censored_followup.startsWith('\n')) 
+                censored_followup = `** **${censored_followup}`
+            
             censored = censored.substring(0, cutoff_index);
         }
 
@@ -75,25 +90,35 @@ async function censorMessage(message) {
         //webhook cache is updated on each messageCreate, so we know it exists
         const hook = utils.webhooks_cache.get(message.channel.id);
 
-        const pfp = message.member.displayAvatarURL(); //in case it's needed twice
-
-        //send censored message through webhook, mimicing user's name and pfp
-        const new_msg = await hook.send({
+        //mimic original author's name and pfp
+        //mentions are disabled because we dont want to ping people twice
+        let message_options = {
             content: censored,
             username: message.member.displayName,
-            avatarURL: pfp
-        });
+            avatarURL: message.member.displayAvatarURL(),
+            allowedMentions: { parse: [] }
+        };
+
+        //check if original message had attachments and filter out ones that are above the current guild's upload size limit
+        const attachments = [...message.attachments?.filter(file => file.size <= utils.getGuildUploadLimit(message.guild) ).values()];
+        //add the attachments to the message if there will be no followup (we dont want the attachments to between the intial and followup message)
+        if (!censored_followup && attachments) message_options.files = attachments;
+
+        //send censored message through webhook
+        const new_msg = await hook.send(message_options);
 
         //cache the message id and corresponding original author id, so that we could use this for the jail context menu command
         utils.censored_cache.set(new_msg.id, message.author.id);
         
+        //this is part 2 of large messages
         if (censored_followup) {
-            const new_msg = await hook.send({
-                content: censored_followup,
-                username: message.member.displayName,
-                avatarURL: pfp
-            });
-
+            //reuse the same MessageOptions, just change the text content
+            message_options.content = censored_followup;
+            //if attachments were not sent with first message
+            if (attachments) message_options.files = attachments;
+            
+            //send and cache ids
+            const new_msg = await hook.send(message_options);
             utils.censored_cache.set(new_msg.id, message.author.id);
         }
     }
