@@ -1,4 +1,4 @@
-const { MessageButton, MessageEmbed, Permissions, GuildMember, MessageActionRow, TextChannel, Webhook, Message, User, Collection } = require('discord.js');
+const { MessageButton, MessageEmbed, Permissions, GuildMember, MessageActionRow, TextChannel, Webhook, User } = require('discord.js');
 const { jail_records, saved_roles } = require('./database/dbObjects');
 
 const webhooks_cache = new Map(); //K: Snowflake representing channel id, V: gudbot's webhook for that channel
@@ -280,6 +280,43 @@ function extractImageUrls(content) {
     return found ? { content: content, urls: urls } : false;
 }
 
+/**
+ * Finds index of last newline or space
+ * @param {string} text 
+ * @param {number} max_length
+ */
+function findLastSpaceIndex(text, max_length) {
+    const last_nline_index = text.lastIndexOf('\n', max_length);
+    const last_space_index = text.lastIndexOf(' ', max_length);
+
+    //prioritize last newline over last space, if both not found- fallback to max_length
+    return last_nline_index !== -1 ? last_nline_index : last_space_index !== -1 ? last_space_index : max_length ?? text.length;
+}
+
+/**
+ * If string ends with whitespace and no punctuation, replace that whitespace with '...'
+ * @param {string} text 
+ */
+function addEllipsisDots(text) {
+    return text.replace(/(\w)\s*$/, (match, last_w) => `${last_w}...`);
+}
+
+/**
+ * Removes whitespace at the beginning and end of string
+ * @param {string} text 
+ */
+function trimWhitespace(text) {
+    return text.replace(/(?:^\s+)|(?:\s+$)/g, '');
+}
+
+/**
+ * @param {Guild} guild 
+ * @returns Maximum file upload size in bytes for given guild.
+ */
+function getGuildUploadLimit(guild) {
+    return guild.premiumTier === 3 ? 100000000 : guild.premiumTier === 2 ? 50000000 : 8000000;
+}
+
 module.exports = {
     webhooks_cache,
     censored_cache,
@@ -294,5 +331,9 @@ module.exports = {
     getDurationSeconds,
     jailMember,
     fetchOrCreateHook,
-    extractImageUrls
+    extractImageUrls,
+    findLastSpaceIndex,
+    addEllipsisDots,
+    trimWhitespace,
+    getGuildUploadLimit
 }
