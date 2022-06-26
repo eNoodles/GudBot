@@ -4,7 +4,7 @@ module.exports = {
 	async execute(client, message) {
         if (message.author.bot) return;
 
-        censorMessage(message).catch(console.error);
+        censorMessage(message);
 	}
 };
 

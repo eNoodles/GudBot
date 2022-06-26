@@ -9,7 +9,7 @@ module.exports = {
 
             //make sure regexp isnt empty
             if (regexp.source !== '(?:)' && new_message.content.match(regexp)) {
-                new_message.delete().catch(console.error);
+                new_message.delete();
             }
         }
 	}

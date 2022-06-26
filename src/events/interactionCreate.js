@@ -14,14 +14,13 @@ module.exports = {
 
 		if (!response) return;
 		
-		response.execute(interaction)
-			.catch(e => {
-				console.error(e);
-				
-				interaction.reply({
-					embeds: [utils.createErrorEmbed('There was an error while executing this command.')],
-					ephemeral: true
-				});
+		response.execute(interaction).catch(e => {
+			console.error(e);
+			
+			interaction.reply({
+				embeds: [utils.createErrorEmbed('There was an error while executing this command.')],
+				ephemeral: true
 			});
+		});
 	}
 };

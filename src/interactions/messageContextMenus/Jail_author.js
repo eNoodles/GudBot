@@ -108,13 +108,6 @@ module.exports = {
                 new MessageActionRow().addComponents(jail_days),
             );
 
-        await interaction.showModal(modal).catch(e => {
-            console.error(e);
-
-            interaction.reply({
-                embeds: [utils.createErrorEmbed(`Something has gone wrong, failed to jail <@${member.id}>`)], 
-                ephemeral: true
-            });
-        });
+        await interaction.showModal(modal);
     }
 };
