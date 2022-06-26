@@ -11,17 +11,26 @@ module.exports = {
 //const blacklist = /ni+gg+(?:a|а|e|е|3)+r?|tr(?:a|а)+nn+(?:y|у|i+(?:e|е))|f(?:a|а)+gg*(?:o|о)*t?/ig;
 
 async function censorMessage(message) {
+    //threads dont have webhooks, so in that case we get the parent channel
+    const is_thread = message.channel.isThread();
+    const channel = is_thread ? message.channel.parent : message.channel;
+
     //fetch/create channel webhook if it's not in cache
     //we do this on every messageCreate, not just the ones that need to be censored, so as to populate the cache
-    const hook = utils.webhooks_cache.get(message.channel.id) || await utils.fetchOrCreateHook(message.channel);
+    const hook = utils.webhooks_cache.get(channel.id) || await utils.fetchOrCreateHook(channel);
 
-    const regexp = utils.getBlacklistRegex();
+    const regexp = utils.getBlacklistRegExp();
     //don't do anything if regexp is empty
     if (regexp.source === '(?:)') return;
 
+    //check whitelists
+    if (utils.checkWhitelists(message)) return;
+
     //find blacklisted words in message content and censor them
     const content = message.content;
-    let star_count = 0;
+
+    //let star_count = 0;
+    let modified = false;
 
     let censored = content.replace(regexp, (word, index) => {
         const space_index = content.lastIndexOf(' ', index); //nearest space to word on the left
@@ -33,18 +42,20 @@ async function censorMessage(message) {
         let censored_word = word[0]; //first char of bad word
         for (let i = 1; i < word.length; i++) { 
             //for every char after the first, add one star
-            censored_word += '\\*';
+            censored_word += '⋆'; // '\\*';
             
             //count total amount of stars inserted into message
             //also used to determine adjusted max_length later
-            star_count++;
+            //star_count++;
+            modified = true;
         }
 
         return censored_word;
     });
 
     //no stars inserted => no censhorship was done
-    if (star_count === 0) return;
+    //if (star_count === 0) return;
+    if (!modified) return;
 
     //append fake reply to beginning of censored message content
     if (message.type === 'REPLY') {
@@ -62,7 +73,7 @@ async function censorMessage(message) {
             }
 
             //newlines break the quote block so we must reinsert '> ' on each line
-            reply_content = reply_content.replace('\n', '\n> ');
+            reply_content = reply_content.replace(/\n/g, '\n> ');
 
             censored = `> [**${replied_msg.member?.displayName || replied_msg.author.username}** ${reply_content}](${replied_msg.url})\n${censored}`;
         }
@@ -71,7 +82,7 @@ async function censorMessage(message) {
     //split message if it's too big
     let censored_followup;
 
-    const max_length = 2000 - star_count;
+    const max_length = 2000; // - star_count;
     if (censored.length > max_length) {
 
         const cutoff_index = utils.findLastSpaceIndex(censored, max_length);
@@ -93,7 +104,8 @@ async function censorMessage(message) {
         content: censored,
         username: message.member.displayName,
         avatarURL: message.member.displayAvatarURL(),
-        allowedMentions: { parse: [] }
+        allowedMentions: { parse: [] },
+        threadId: is_thread ? message.channelId : null
     };
 
     //check if original message had attachments and filter out ones that are above the current guild's upload size limit
@@ -102,10 +114,9 @@ async function censorMessage(message) {
     if (!censored_followup && attachments) message_options.files = attachments;
 
     //send censored message through webhook
-    const new_msg = await hook.send(message_options);
-
-    //cache the message id and corresponding original author id, so that we could use this for the jail context menu command
-    utils.censored_cache.set(new_msg.id, message.author.id);
+    //then cache message id and corresponding author id, so that we could check this for the jail context menu command
+    hook.send(message_options)
+        .then(new_msg => utils.censored_cache.set(new_msg.id, message.author.id));
     
     //this is part 2 of large messages
     if (censored_followup) {
@@ -115,7 +126,7 @@ async function censorMessage(message) {
         if (attachments) message_options.files = attachments;
         
         //send and cache ids
-        const new_msg = await hook.send(message_options);
-        utils.censored_cache.set(new_msg.id, message.author.id);
+        hook.send(message_options)
+            .then(new_msg => utils.censored_cache.set(new_msg.id, message.author.id));
     }
 }

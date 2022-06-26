@@ -1,5 +1,5 @@
 const { MessageButton, MessageEmbed, Permissions, GuildMember, MessageActionRow, TextChannel, Webhook, User } = require('discord.js');
-const { jail_records, saved_roles, blacklist } = require('./database/dbObjects');
+const { jail_records, saved_roles, blacklist, whitelist } = require('./database/dbObjects');
 
 const webhooks_cache = new Map(); //K: Snowflake representing channel id, V: gudbot's webhook for that channel
 const censored_cache = new Map(); //K: Snowflake representing message id, V: Snowflake representing original message author's id 
@@ -332,8 +332,49 @@ function generateBlacklistRegExp() {
 /**
  * @returns cached blacklist regular expression
  */
-function getBlacklistRegex() {
+function getBlacklistRegExp() {
     return blacklist_regexp;
+}
+
+//arrays of cached ids
+let whitelisted_users = [];
+let whitelisted_channels = [];
+let whitelisted_roles = [];
+
+/**
+ * Finds all whitelist table entries and filters them into corresponding caches
+ */
+function generateWhitelists() {
+    whitelist.findAll().then(entries => {
+        whitelisted_users = [];
+        whitelisted_roles = [];
+        whitelisted_channels = [];
+
+        entries.forEach(entry => {
+            switch (entry.type) {
+                case '@':
+                    whitelisted_users.push(entry.id);
+                    break;
+                case '@&':
+                    whitelisted_roles.push(entry.id);
+                    break;
+                case '#':
+                    whitelisted_channels.push(entry.id);
+            }
+        });
+    }).catch(console.error);
+}
+
+/**
+ * @param {Message}
+ * @returns True if message meets whitelist criteria
+ */
+function checkWhitelists(message) {
+    return (
+        whitelisted_users.indexOf(message.author.id) > -1 || 
+        whitelisted_channels.indexOf(message.channelId) > -1 || 
+        message.member?.roles.cache.some(role => whitelisted_roles.some(id => role.id === id) )
+    );
 }
 
 module.exports = {
@@ -356,5 +397,7 @@ module.exports = {
     trimWhitespace,
     getGuildUploadLimit,
     generateBlacklistRegExp,
-    getBlacklistRegex
+    getBlacklistRegExp,
+    generateWhitelists,
+    checkWhitelists
 }

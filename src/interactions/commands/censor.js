@@ -1,28 +1,54 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { CommandInteraction, MessageEmbed } = require('discord.js');
 const utils = require('../../utils');
-const { blacklist } = require('../../database/dbObjects');
+const { blacklist, whitelist } = require('../../database/dbObjects');
 
 module.exports = {
     data: new SlashCommandBuilder()
         .setName('censor')
         .setDescription('Manage server censorship.')
-        .addSubcommand(subcommand => subcommand
-            .setName('add')
-            .setDescription('Add a word to the blacklist.')
-            .addStringOption(option => option
-                .setName('word')
-                .setDescription('Word (string or regular expression) that you want to be censored.')
-                .setRequired(true)
+        .addSubcommandGroup(group => group
+            .setName('blacklist')
+            .setDescription('Commands for managing blacklisted words.')
+            .addSubcommand(subcommand => subcommand
+                .setName('add')
+                .setDescription('Add a word to the blacklist.')
+                .addStringOption(option => option
+                    .setName('word')
+                    .setDescription('Word (string or regular expression) that you want to be censored.')
+                    .setRequired(true)
+                )
+            )
+            .addSubcommand(subcommand => subcommand
+                .setName('remove')
+                .setDescription('Remove a word from the blacklist.')
+                .addStringOption(option => option
+                    .setName('word')
+                    .setDescription('Word (string or regular expression) that you want to remove.')
+                    .setRequired(true)
+                )
             )
         )
-        .addSubcommand(subcommand => subcommand
-            .setName('remove')
-            .setDescription('Remove a word from the blacklist.')
-            .addStringOption(option => option
-                .setName('word')
-                .setDescription('Word (string or regular expression) that you want to remove.')
-                .setRequired(true)
+        .addSubcommandGroup(group => group
+            .setName('whitelist')
+            .setDescription('Commands for managing whitelisted channels, users, and roles.')
+            .addSubcommand(subcommand => subcommand
+                .setName('add')
+                .setDescription('Add a channel, user, or role to the whitelist.')
+                .addStringOption(option => option
+                    .setName('mentionable')
+                    .setDescription('Channel, user, or role that you want to be whitelisted.')
+                    .setRequired(true)
+                )
+            )
+            .addSubcommand(subcommand => subcommand
+                .setName('remove')
+                .setDescription('Remove a channel, user or role from the whitelist.')
+                .addStringOption(option => option
+                    .setName('mentionable')
+                    .setDescription('Channel, user, or role that you want to remove.')
+                    .setRequired(true)
+                )
             )
         )
         .addSubcommand(subcommand => subcommand
@@ -40,13 +66,14 @@ module.exports = {
      */
     async execute(interaction) {
         
+        const subcommand_group = interaction.options.getSubcommandGroup(false) ?? '';
         const subcommand = interaction.options.getSubcommand();
         const user = interaction.user;
 
-        let word = interaction.options.getString('word');
+        switch (`${subcommand_group}${subcommand}`) {
+            case 'blacklistadd': {
+                let word = interaction.options.getString('word');
 
-        switch (subcommand) {
-            case 'add':
                 //make sure string isn't too short or too long
                 if (word.length < 3 || word.length > 50) {
                     interaction.reply({
@@ -82,12 +109,15 @@ module.exports = {
                         .setColor(utils.colors.green);
 
                     interaction.reply({ embeds: [embed] });
-                }).catch(console.error);
+                });
 
                 break;
-            case 'remove':
+            }
+            case 'blacklistremove': {
+                let word = interaction.options.getString('word');
+                
                 //fetch entry matching given word
-                const entry = await blacklist.findOne({ where: { word: word } }).catch(console.error);
+                const entry = await blacklist.findOne({ where: { word: word } });
 
                 if (entry) {
                     //delete entry from table
@@ -111,21 +141,110 @@ module.exports = {
                 }
 
                 break;
-            case 'list':
-                //fetch all entries from blacklist table
-                const entries = await blacklist.findAll().catch(console.error);
+            }
+            case 'whitelistadd': {
+                const mentionable = interaction.options.getString('mentionable');
 
+                //match mention of role, user or channel
+                //capture "type" and id
+                // types:
+                // @ - user (@! also works but the ! is omitted)
+                //@& - role
+                // # - channel
+                const regexp = mentionable.match(/<(@&?|#)!?(\d+)>/);
+                
+                if (!regexp) {
+                    interaction.reply({
+                        embeds: [utils.createErrorEmbed(`Please mention a channel, user or role.`)],
+                        ephemeral: true
+                    });
+                }
+
+                await whitelist.create({
+                    id: regexp[2],
+                    type: regexp[1],
+                    added_by: user.id
+                }).then(async entry => {
+
+                    //update whitelists
+                    utils.generateWhitelists();
+
+                    const embed = new MessageEmbed()
+                        .setTitle('Censorship database updated')
+                        .setDescription(`Added <${entry.type}${entry.id}> to whitelist.`)
+                        .setColor(utils.colors.green);
+
+                    interaction.reply({ embeds: [embed] });
+                });
+
+                break;
+            }
+            case 'whitelistremove': {
+                const mentionable = interaction.options.getString('mentionable');
+
+                //match mention of role, user or channel
+                //we dont need the type for this, so it is a non capture group
+                const regexp = mentionable.match(/<(?:@&?|#)!?(\d+)>/);
+                
+                if (!regexp) {
+                    interaction.reply({
+                        embeds: [utils.createErrorEmbed(`Please mention a channel, user or role.`)],
+                        ephemeral: true
+                    });
+                }
+                
+                //fetch entry whose id matches given mentionable
+                const entry = await whitelist.findOne({ where: { id: regexp[1] } });
+
+                if (entry) {
+                    //delete entry from table
+                    entry.destroy();
+
+                    //update whitelists
+                    utils.generateWhitelists();
+
+                    const embed = new MessageEmbed()
+                        .setTitle('Censorship database updated')
+                        .setDescription(`Successfully removed ${regexp[0]} from whitelist.`)
+                        .setColor(utils.colors.green);
+
+                    interaction.reply({ embeds: [embed] });
+                }
+                else {
+                    interaction.reply({
+                        embeds: [utils.createErrorEmbed(`No entry matching \`${regexp[0]}\`'s ID found in database.`)], 
+                        ephemeral: true
+                    });
+                }
+
+                break;
+            }
+            case 'list': {
+                //fetch all entries from blacklist and whitelist tables
+                const blacklist_entries = await blacklist.findAll();
+                const whitelist_entries = await whitelist.findAll();
+    
                 //format description
                 let desc = '**Blacklist:**\n';
 
                 //added_by is the id of the user that added the word
-                entries.forEach(entry => {
+                blacklist_entries.forEach(entry => {
                     desc += `\`${entry.word}\` - added by <@${entry.added_by}>\n`;
                 });
 
                 //if no words found in blacklist table
-                if (entries?.length === 0) {
-                    desc += 'No words found.';
+                if (blacklist_entries?.length === 0) {
+                    desc += 'Nothing found.\n';
+                }
+
+                //same thing for whitelist
+                desc += '\n**Whitelist:**\n';
+                whitelist_entries.forEach(entry => {
+                    desc += `<${entry.type}${entry.id}> - added by <@${entry.added_by}>\n`;
+                });
+
+                if (whitelist_entries?.length === 0) {
+                    desc += 'Nothing found.';
                 }
 
                 const embed = new MessageEmbed()
@@ -140,9 +259,10 @@ module.exports = {
                 });
 
                 break;
+            }
             default:
                 interaction.reply({
-                    embeds: [utils.createErrorEmbed(`Something has gone wrong, invalid \`/censor\` subcommand \`${subcommand}\``)], 
+                    embeds: [utils.createErrorEmbed(`Something has gone wrong, received invalid command \`/censor ${subcommand_group} ${subcommand}\``)],
                     ephemeral: true
                 });
         }

@@ -1,4 +1,4 @@
-const { generateBlacklistRegExp } = require('../utils');
+const { generateBlacklistRegExp, generateWhitelists } = require('../utils');
 
 module.exports = {
 	once: true,
@@ -6,5 +6,6 @@ module.exports = {
 		console.log(`Logged in as ${client.user.tag}`);
 
 		generateBlacklistRegExp();
+		generateWhitelists();
 	},
 };
