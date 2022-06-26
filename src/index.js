@@ -31,9 +31,9 @@ for (const file of event_files) {
     const event_name = file.substring(0, file.lastIndexOf('.') );
 
     if (event.once)
-        client.once(event_name, (...args) => event.execute(client, ...args));
+        client.once(event_name, (...args) => event.execute(client, ...args).catch(console.error));
     else
-        client.on(event_name, (...args) => event.execute(client, ...args));
+        client.on(event_name, (...args) => event.execute(client, ...args).catch(console.error));
 }
 
 ['commands','userContextMenus','messageContextMenus','buttons','modals'].forEach(type => {
