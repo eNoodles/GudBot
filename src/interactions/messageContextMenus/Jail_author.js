@@ -1,10 +1,12 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionRow } = require('discord.js');
+const { PermissionFlagsBits } = require('discord-api-types/v10');
 const utils = require('../../utils');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
         .setName('Jail author')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
         .setType(3),
 
     /**

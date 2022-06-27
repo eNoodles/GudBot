@@ -7,6 +7,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('censor')
         .setDescription('Manage server censorship.')
+        .setDefaultMemberPermissions(0) //admin only
         .addSubcommandGroup(group => group
             .setName('blacklist')
             .setDescription('Commands for managing blacklisted words.')

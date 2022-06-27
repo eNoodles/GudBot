@@ -1,4 +1,5 @@
-const { MessageButton, MessageEmbed, Permissions, GuildMember, MessageActionRow, TextChannel, Webhook, User } = require('discord.js');
+const { MessageButton, MessageEmbed, GuildMember, MessageActionRow, TextChannel, Webhook, User } = require('discord.js');
+const { PermissionFlagsBits } = require('discord-api-types/v10');
 const { jail_records, saved_roles, blacklist, whitelist } = require('./database/dbObjects');
 
 const webhooks_cache = new Map(); //K: Snowflake representing channel id, V: gudbot's webhook for that channel
@@ -75,7 +76,7 @@ function hasRole(member, role) {
  * @returns {boolean} True if member has administrator perms.
  */
 function isAdmin(member) {
-    return member?.permissions.has(Permissions.FLAGS.ADMINISTRATOR);
+    return member?.permissions.has(PermissionFlagsBits.Administrator);
 }
 
 /**
@@ -108,9 +109,9 @@ function createErrorEmbed(message, footer = 'User satisfaction is not guaranteed
  */
 function generateIntegerChoices(min=0, max=9) {
     const temp_array = [];
-    const iterations = max - min + 1;
+    const iterations = max - min;
 
-    for (let i = 0; i < iterations; i++) {
+    for (let i = 0; i <= iterations; i++) {
         let val = min + i;
         temp_array[i] = { name: `${val}`, value: val };
     }

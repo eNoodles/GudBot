@@ -1,11 +1,13 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, CommandInteraction, MessageButton } = require('discord.js');
+const { PermissionFlagsBits } = require('discord-api-types/v10');
 const utils = require('../../utils');
 
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('jail')
 		.setDescription('Jail user and strip them of their roles.')
+        .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
         .addUserOption(option => option
             .setName('user')
             .setDescription('Server member to jail.')

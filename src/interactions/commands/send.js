@@ -6,6 +6,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('send')
         .setDescription('test')
+        .setDefaultMemberPermissions(0) //admin only
         .addStringOption(option => option
             .setName('text')
             .setDescription('Message content to be sent')
