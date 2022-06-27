@@ -95,6 +95,19 @@ module.exports = {
                 //make sure there are no capture groups
                 word = word.replace(/\((?!\?:)/g, '(?:');
 
+                //make sure it's a valid regexp
+                try {
+                    new RegExp(word);
+                }
+                catch(e) {
+                    interaction.reply({
+                        embeds: [utils.createErrorEmbed(`\`${word}\` is not a valid regular expression.`)],
+                        ephemeral: true
+                    });
+
+                    return;
+                }
+
                 await blacklist.create({
                     word: word,
                     added_by: user.id
