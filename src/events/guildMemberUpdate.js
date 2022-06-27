@@ -20,35 +20,30 @@ module.exports = {
         //if jailed role was added
         if (added_roles.has(utils.ids.jailed_role)) {
 
-            try {
-                //no jailing admins
-                if (!new_member.manageable || utils.isAdmin(new_member)) {  
-                    await new_member.roles.remove(utils.ids.jailed_role);
-                    return;
-                }
-
-                //guildMemberUpdate doesn't emit executor data unfortunately, so we have to look it up in the audit log
-                const audit_logs = await new_member.guild.fetchAuditLogs({
-                    type: 25, //MemberRoleUpdate
-                    limit: 1
-                });
-
-                //make sure we got the right one by cross referencing audit log entry target and member id
-                const member_update_entry = audit_logs.entries.filter(entry => entry.target.id === new_member.id).first();
-                const jailer_user = member_update_entry?.executor;
-
-                //only proceed if jailer can be determined
-                //ignore if jailing was done by bot (to prevent recursion)
-                if (jailer_user && !jailer_user.bot) {
-                    const jail_message = await utils.jailMember(new_member, jailer_user);
-
-                    //send confirmation in #criminal-records
-                    const channel = await client.channels.fetch(utils.ids.records_ch);
-                    await channel.send(jail_message);
-                }
+            //no jailing admins
+            if (!new_member.manageable || utils.isAdmin(new_member)) {  
+                await new_member.roles.remove(utils.ids.jailed_role);
+                return;
             }
-            catch (e) {
-                console.error(e);
+
+            //guildMemberUpdate doesn't emit executor data unfortunately, so we have to look it up in the audit log
+            const audit_logs = await new_member.guild.fetchAuditLogs({
+                type: 25, //MemberRoleUpdate
+                limit: 1
+            });
+
+            //make sure we got the right one by cross referencing audit log entry target and member id
+            const member_update_entry = audit_logs.entries.filter(entry => entry.target.id === new_member.id).first();
+            const jailer_user = member_update_entry?.executor;
+
+            //only proceed if jailer can be determined
+            //ignore if jailing was done by bot (to prevent recursion)
+            if (jailer_user && !jailer_user.bot) {
+                const jail_message = await utils.jailMember(new_member, jailer_user);
+
+                //send confirmation in #criminal-records
+                const channel = await client.channels.fetch(utils.ids.records_ch);
+                await channel.send(jail_message);
             }
         }
     }
