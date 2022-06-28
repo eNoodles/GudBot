@@ -1,4 +1,5 @@
 const { Client, GuildMember } = require('discord.js');
+const { jailMember } = require('../managers/jail_manager');
 const utils = require('../utils');
 
 module.exports = {
@@ -39,7 +40,7 @@ module.exports = {
             //only proceed if jailer can be determined
             //ignore if jailing was done by bot (to prevent recursion)
             if (jailer_user && !jailer_user.bot) {
-                utils.jailMember(new_member, jailer_user);
+                jailMember(new_member, jailer_user);
             }
         }
     }

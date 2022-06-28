@@ -1,6 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, CommandInteraction, MessageButton } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
+const { jailMember } = require('../../managers/jail_manager');
 const utils = require('../../utils');
 
 module.exports = {
@@ -67,7 +68,7 @@ module.exports = {
             return;
         }
 
-        const jail_message_url = await utils.jailMember(member, interaction.user, reason, duration);
+        const jail_message_url = await jailMember(member, interaction.user, reason, duration);
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()

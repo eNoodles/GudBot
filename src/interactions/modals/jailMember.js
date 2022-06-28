@@ -1,4 +1,5 @@
 const { MessageEmbed, MessageButton, MessageActionRow, ModalSubmitInteraction } = require('discord.js');
+const { jailMember } = require('../../managers/jail_manager');
 const utils = require('../../utils');
 
 module.exports = {
@@ -62,7 +63,7 @@ module.exports = {
         }
 
         //jail member and get url of #criminal-records message
-        const jail_message_url = await utils.jailMember(member, interaction.user, reason, duration, ref_msg_embed);
+        const jail_message_url = await jailMember(member, interaction.user, reason, duration, ref_msg_embed);
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()
