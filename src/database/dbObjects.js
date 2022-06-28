@@ -19,3 +19,5 @@ for (const file of model_files) {
     
     module.exports[file_name] = model;
 }
+
+module.exports.Op = Sequelize.Op;

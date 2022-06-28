@@ -39,11 +39,7 @@ module.exports = {
             //only proceed if jailer can be determined
             //ignore if jailing was done by bot (to prevent recursion)
             if (jailer_user && !jailer_user.bot) {
-                const jail_message = await utils.jailMember(new_member, jailer_user);
-
-                //send confirmation in #criminal-records
-                const channel = await client.channels.fetch(utils.ids.records_ch);
-                await channel.send(jail_message);
+                utils.jailMember(new_member, jailer_user);
             }
         }
     }

@@ -32,19 +32,17 @@ module.exports = {
             return;
         }
 
-        //generate base jail message
-        const jail_message = await utils.jailMember(member, interaction.user, reason, duration);
-
-        //if a message id as passed, we want to add it as an embed to the jail message
+        //if a message id is passed, we want to add it as an embed to the jail message
+        let ref_msg_embed = null;
         if (args[2]) {
             const ref_msg = await interaction.channel.messages.fetch(args[2]);
-            
+
             const embed = new MessageEmbed()
                 .setTitle('Message:')
                 .setDescription(ref_msg.content)
                 .setFooter({text: `#${interaction.channel.name}`})
                 .setTimestamp(ref_msg.createdTimestamp);
-
+    
             //if message had an image attachment, we want to prioritize that as the embed's image
             const image = ref_msg.attachments?.filter(file => file.contentType.startsWith('image')).first();
             if (image) {
@@ -59,14 +57,12 @@ module.exports = {
                         .setImage(extract_images.urls[0]);
                 }
             }
-
-            //add the reference message embed to our jail message
-            jail_message.embeds.push(embed);
+    
+            ref_msg_embed = embed;
         }
 
-        //send generated jail message to #criminal-records
-        const channel = await interaction.guild.channels.fetch(utils.ids.records_ch);
-        const sent = await channel.send(jail_message);
+        //jail member and get url of #criminal-records message
+        const jail_message_url = await utils.jailMember(member, interaction.user, reason, duration, ref_msg_embed);
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()
@@ -76,7 +72,7 @@ module.exports = {
         const view_button = new MessageButton()
             .setLabel('View record')
             .setStyle(utils.buttons.link)
-            .setURL(sent.url);
+            .setURL(jail_message_url);
             
         await interaction.reply({
             embeds: [embed],

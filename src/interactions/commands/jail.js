@@ -67,9 +67,7 @@ module.exports = {
             return;
         }
 
-        const jail_message = await utils.jailMember(member, interaction.user, reason, duration);
-        const channel = await interaction.guild.channels.fetch(utils.ids.records_ch);
-        const sent = await channel.send(jail_message);
+        const jail_message_url = await utils.jailMember(member, interaction.user, reason, duration);
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()
@@ -79,7 +77,7 @@ module.exports = {
         const view_button = new MessageButton()
             .setLabel('View record')
             .setStyle(utils.buttons.link)
-            .setURL(sent.url);
+            .setURL(jail_message_url);
             
         await interaction.reply({
             embeds: [embed],

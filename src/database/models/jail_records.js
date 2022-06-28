@@ -5,6 +5,7 @@ module.exports = (sequelize, DataTypes) => {
         reason: DataTypes.STRING(512),
         jail_timestamp: DataTypes.INTEGER,
         release_timestamp: DataTypes.INTEGER,
+        unjailed: DataTypes.BOOLEAN,
         url: DataTypes.STRING
     }, {
         timestamps: false
