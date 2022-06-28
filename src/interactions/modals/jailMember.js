@@ -19,6 +19,12 @@ module.exports = {
             return;
         }
 
+        //no jailing admins
+        if (!member.manageable || utils.isAdmin(member)) {  
+            await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
+            return;
+        }
+
         const reason = interaction.fields.getTextInputValue('jail_reason');
 
         const minutes = parseInt(interaction.fields.getTextInputValue('jail_minutes'), 10) || 0;
@@ -27,19 +33,13 @@ module.exports = {
 
         const duration = utils.getDurationSeconds(minutes, hours, days);
 
-        //no jailing admins
-        if (!member.manageable || utils.isAdmin(member)) {  
-            await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
-            return;
-        }
-
         //if a message id is passed, we want to add it as an embed to the jail message
         let ref_msg_embed = null;
         if (args[2]) {
             const ref_msg = await interaction.channel.messages.fetch(args[2]);
 
             const embed = new MessageEmbed()
-                .setTitle('Message:')
+                .setTitle('Jailed for:')
                 .setDescription(ref_msg.content)
                 .setFooter({text: `#${interaction.channel.name}`})
                 .setTimestamp(ref_msg.createdTimestamp);

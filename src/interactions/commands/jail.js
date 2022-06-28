@@ -54,6 +54,12 @@ module.exports = {
             return;
         }
 
+        //no jailing admins
+        if (!member.manageable || utils.isAdmin(member)) {  
+            await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
+            return;
+        }
+
         const reason = interaction.options.getString('reason');
         
         const minutes = interaction.options.getInteger('minutes') || 0;
@@ -61,12 +67,6 @@ module.exports = {
         const days = interaction.options.getInteger('days') || 0;
 
         const duration = utils.getDurationSeconds(minutes, hours, days);
-
-        //no jailing admins
-        if (!member.manageable || utils.isAdmin(member)) {  
-            await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
-            return;
-        }
 
         const jail_message_url = await jailMember(member, interaction.user, reason, duration);
 

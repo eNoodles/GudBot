@@ -60,12 +60,27 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
         //format role list for embed
         roles_str += `<@&${role.id}> `;
     });
+    //make sure role list isn't over 1024 chars
+    if (roles_str.length > 1024) {
+        roles_str = roles_str.substring(
+            0,
+            roles_str.lastIndexOf('>', 1023) + 1
+        );
+    }
 
     //fetch existing jail records for this user
-    const prior_offenses = await jail_records.findAll({ where: { offender_id: member.id } });
+    const prior_offenses = await jail_records.findAll({
+        where: { offender_id: member.id },
+        order: [
+            ['jail_timestamp', 'DESC'],
+        ]
+    });
     //format string for embed
     let prior_offenses_str = '';
-    prior_offenses.forEach(record => prior_offenses_str += `(<t:${record.jail_timestamp}:f>)[${record.url}]\n`);
+    //each line is 120 characters, so having 8 or more we will go over 1024 char limit of field
+    prior_offenses.slice(0, 8).forEach(record => prior_offenses_str += `[<t:${record.jail_timestamp}:f>](${record.url})\n`);
+    //specify if there were more than 8 prior offenses
+    if (prior_offenses.length > 8) prior_offenses_str += `+${prior_offenses.length - 8} more`;
 
     //create new record in db
     const jail_record = await jail_records.create({
@@ -129,22 +144,22 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
 
     //create buttons for managing jail instance
     const unjail_button = new MessageButton()
-        .setLabel('Unjail')
+        .setLabel('Unjail user')
         .setStyle(utils.buttons.green)
         .setCustomId(`recordsUnjail|${jail_record.id}`);
 
     const timer_button = new MessageButton()
-        .setLabel('Set time')
+        .setLabel('Set release time')
         .setStyle(utils.buttons.blurple)
         .setCustomId(`recordsSetJailTime|${jail_record.id}`);
     
     const edit_button = new MessageButton()
-        .setLabel('Edit')
+        .setLabel('Edit reason')
         .setStyle(utils.buttons.gray)
         .setCustomId(`recordsEdit|${jail_record.id}`);
 
     const del_button = new MessageButton()
-        .setLabel('Delete record')
+        .setLabel('\u200b Delete record  \u200b')
         .setStyle(utils.buttons.red)
         .setCustomId(`recordsDelete|${jail_record.id}`)
         .setDisabled();
@@ -153,7 +168,10 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
     const channel = await member.guild.channels.fetch(utils.ids.records_ch);
     const records_msg = await channel.send({
         embeds: embeds,
-        components: [new MessageActionRow().addComponents([unjail_button, timer_button, edit_button, del_button])]
+        components: [
+            new MessageActionRow().addComponents([unjail_button, timer_button]),
+            new MessageActionRow().addComponents([edit_button, del_button])
+        ]
     });
 
     //update jail record with url of newly sent message
@@ -202,6 +220,7 @@ async function unjailMember(data, unjailer_user) {
     //update main embed of records message
     const embeds = message.embeds;
     const new_embed = new MessageEmbed(embeds[0])
+        .setColor(utils.colors.blurple)
         .spliceFields(6, 1, {
             name: 'Time of release:',
             value: `<t:${current_timestamp}:f>` //change the release time display format from relative to full
@@ -211,16 +230,21 @@ async function unjailMember(data, unjailer_user) {
     embeds.splice(0, 1, new_embed);
 
     //update buttons
-    const components = message.components[0].components; //components[0] is the MessageActionRow, all of its components are buttons
-    const unjail_button = new MessageButton(components[0]).setDisabled();
-    const timer_button = new MessageButton(components[1]).setDisabled();
-    const edit_button = new MessageButton(components[2]);
-    const del_button = new MessageButton(components[3]).setDisabled(false);
+    //const components = message.components[0].components; //components[0] is the MessageActionRow, all of its components are buttons
+    const first_row = message.components[0].components;
+    const second_row = message.components[1].components;
+    const unjail_button = new MessageButton(first_row[0]).setDisabled();
+    const timer_button = new MessageButton(first_row[1]).setDisabled();
+    const edit_button = new MessageButton(second_row[0]);
+    const del_button = new MessageButton(second_row[1]).setDisabled(false);
 
     //update #criminal-records message
     message = await message.edit({
         embeds: embeds,
-        components: [new MessageActionRow().addComponents([unjail_button, timer_button, edit_button, del_button])]
+        components: [
+            new MessageActionRow().addComponents([unjail_button, timer_button]),
+            new MessageActionRow().addComponents([edit_button, del_button])
+        ]
     });
 
     //update cache

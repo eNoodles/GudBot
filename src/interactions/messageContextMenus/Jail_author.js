@@ -1,6 +1,7 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionRow } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
+const { censored_cache } = require('../../managers/censor_manager');
 const utils = require('../../utils');
 
 module.exports = {
@@ -19,7 +20,7 @@ module.exports = {
         //if user clicked on a webhook
         if (message.webhookId) {
             //first check cache
-            const author_id = utils.censored_cache.get(message.id);
+            const author_id = censored_cache.get(message.id);
 
             if (author_id) {
                 member = await interaction.guild.members.fetch(author_id);
