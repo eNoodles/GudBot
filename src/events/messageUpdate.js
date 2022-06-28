@@ -1,4 +1,4 @@
-const { getBlacklistRegExp, checkWhitelists } = require('../utils');
+const { getBlacklistRegExp, checkWhitelists } = require('../managers/censor_manager');
 
 module.exports = {
 	async execute(client, old_message, new_message) {

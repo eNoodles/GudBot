@@ -1,7 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { CommandInteraction, MessageEmbed } = require('discord.js');
-const utils = require('../../utils');
 const { blacklist, whitelist } = require('../../database/dbObjects');
+const { generateBlacklistRegExp, generateWhitelists } = require('../../managers/censor_manager');
+const utils = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -115,7 +116,7 @@ module.exports = {
                 }).then(async entry => {
 
                     //update global regexp
-                    utils.generateBlacklistRegExp();
+                    generateBlacklistRegExp();
 
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
@@ -138,7 +139,7 @@ module.exports = {
                     entry.destroy();
 
                     //update global regexp
-                    utils.generateBlacklistRegExp();
+                    generateBlacklistRegExp();
 
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
@@ -181,7 +182,7 @@ module.exports = {
                 }).then(async entry => {
 
                     //update whitelists
-                    utils.generateWhitelists();
+                    generateWhitelists();
 
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
@@ -215,7 +216,7 @@ module.exports = {
                     entry.destroy();
 
                     //update whitelists
-                    utils.generateWhitelists();
+                    generateWhitelists();
 
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')

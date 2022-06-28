@@ -1,9 +1,5 @@
-const { Message, MessageEmbed, GuildMember, TextChannel, Webhook, Collection } = require('discord.js');
+const { MessageEmbed, GuildMember } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
-const { blacklist, whitelist } = require('./database/dbObjects');
-
-const webhooks_cache = new Collection(); //K: Snowflake representing channel id, V: gudbot's webhook for that channel
-const censored_cache = new Collection(); //K: Snowflake representing message id, V: Snowflake representing original message author's id 
 
 const ids = {
     client: '822565220190650379',
@@ -49,6 +45,7 @@ const colors = {
     green: 3394611,
     gray: 10066329,
     purple: 10434242,
+    blurple: 7506394,
 };
 
 const buttons = {
@@ -68,7 +65,7 @@ function getCurrentTimestamp() {
 
 /**
  * @param {GuildMember} member 
- * @param {*} role Role's ID or name
+ * @param {string} role Role's ID or name
  * @returns {boolean} True if member has role matching name or ID.
  */
 function hasRole(member, role) {
@@ -110,8 +107,8 @@ function createErrorEmbed(message, footer = 'User satisfaction is not guaranteed
 }
 
 /**
- * @param {Number} min 
- * @param {Number} max 
+ * @param {number} min 
+ * @param {number} max 
  * @returns Array of choices for SlashCommandIntegerOption
  */
 function generateIntegerChoices(min=0, max=9) {
@@ -134,20 +131,6 @@ function generateIntegerChoices(min=0, max=9) {
  */
 function getDurationSeconds(minutes, hours, days) {
     return minutes || hours || days ? days * 86400 + hours * 3600 + minutes * 60 : null;
-}
-
-/**
- * @param {TextChannel} channel
- * @returns {Webhook} Fetched or newly created GudBot-owned webhook
- */
-async function fetchOrCreateHook(channel) {
-    const hook = 
-        (await channel.fetchWebhooks()).find(hook => hook.owner.id === ids.client) || //fetch channel's webhooks and fine the one created by GudBut
-        await channel.createWebhook('GudBot'); //if it doesn't exist, create it
-
-    webhooks_cache.set(channel.id, hook); //map to cache
-
-    return hook;
 }
 
 /**
@@ -205,69 +188,7 @@ function getGuildUploadLimit(guild) {
     return guild.premiumTier === 3 ? 100000000 : guild.premiumTier === 2 ? 50000000 : 8000000;
 }
 
-let blacklist_regexp = new RegExp('', 'ig');
-
-/**
- * Finds all blacklist table entries and regenerates blacklist_regexp
- */
-function generateBlacklistRegExp() {
-    blacklist.findAll().then(entries => {
-        const regexp_source = entries.map(e => e.word).join('|');
-        blacklist_regexp = new RegExp(regexp_source, 'ig');
-    }).catch(console.error);
-}
-
-/**
- * @returns cached blacklist regular expression
- */
-function getBlacklistRegExp() {
-    return blacklist_regexp;
-}
-
-//arrays of cached ids
-let whitelisted_users = [];
-let whitelisted_channels = [];
-let whitelisted_roles = [];
-
-/**
- * Finds all whitelist table entries and filters them into corresponding caches
- */
-function generateWhitelists() {
-    whitelist.findAll().then(entries => {
-        whitelisted_users = [];
-        whitelisted_roles = [];
-        whitelisted_channels = [];
-
-        entries.forEach(entry => {
-            switch (entry.type) {
-                case '@':
-                    whitelisted_users.push(entry.id);
-                    break;
-                case '@&':
-                    whitelisted_roles.push(entry.id);
-                    break;
-                case '#':
-                    whitelisted_channels.push(entry.id);
-            }
-        });
-    }).catch(console.error);
-}
-
-/**
- * @param {Message}
- * @returns True if message meets whitelist criteria
- */
-function checkWhitelists(message) {
-    return (
-        whitelisted_users.indexOf(message.author.id) > -1 || 
-        whitelisted_channels.indexOf(message.channelId) > -1 || 
-        message.member?.roles.cache.some(role => whitelisted_roles.some(id => role.id === id) )
-    );
-}
-
 module.exports = {
-    webhooks_cache,
-    censored_cache,
     ids,
     colors,
     buttons,
@@ -278,14 +199,9 @@ module.exports = {
     createErrorEmbed,
     generateIntegerChoices,
     getDurationSeconds,
-    fetchOrCreateHook,
     extractImageUrls,
     findLastSpaceIndex,
     addEllipsisDots,
     trimWhitespace,
-    getGuildUploadLimit,
-    generateBlacklistRegExp,
-    getBlacklistRegExp,
-    generateWhitelists,
-    checkWhitelists
+    getGuildUploadLimit
 }
