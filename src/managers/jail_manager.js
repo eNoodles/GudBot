@@ -37,15 +37,19 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
     const jail_timestamp = utils.getCurrentTimestamp();
     const release_timestamp = duration ? jail_timestamp + duration : null;
 
-    const roles = member.roles.cache.filter(role => role.id !== utils.ids.guild && role.id !== utils.ids.jailed_role); //ignore base @@everyone role and jailed role
+    //get collection of member's roles, apart from base @@everyone role and jailed role
+    const roles = member.roles.cache.filter(role => role.id !== utils.ids.guild && role.id !== utils.ids.jailed_role);
+    //used for cached JailData
     const role_entries = [];
-    let roles_str = ''; //for embed
+    //used for main embed
+    let roles_str = '';
 
-    //clear rolebank of member's previously saved roles (just in case)
+    //clear role bank of member's previously saved roles (just in case)
     await jailed_roles.destroy({ where: { user_id: member.id } });
 
     //save member's roles in db
     roles.forEach( async role => {
+        //create array of these model instances for the JailData cache
         role_entries.push(
             await jailed_roles.create({
                 user_id: member.id,
@@ -57,10 +61,13 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
         roles_str += `<@&${role.id}> `;
     });
 
-    //count prior offenses
-    const prior_offenses = await jail_records.count({ where: { offender_id: member.id } });
+    //fetch existing jail records for this user
+    const prior_offenses = await jail_records.findAll({ where: { offender_id: member.id } });
+    //format string for embed
+    let prior_offenses_str = '';
+    prior_offenses.forEach(record => prior_offenses_str += `(<t:${record.jail_timestamp}:f>)[${record.url}]\n`);
 
-    //save offender id, jailer id, reason in jail_records
+    //create new record in db
     const jail_record = await jail_records.create({
         offender_id: offender_id,
         jailer_id: jailer_id,
@@ -71,16 +78,14 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
         url: null //set after sending message
     });
 
-    //display in audit log
+    //message displayed in audit log
     const audit_log_msg = `Jailed by ${jailer_user.tag}`;
-
     //remove member's roles
     await member.roles.remove( roles, audit_log_msg );
-
-    //if all roles successfully removed, add jailed role
+    //add jailed role
     await member.roles.add(utils.ids.jailed_role, audit_log_msg);
 
-    //main info embed to be sent in #criminal-records
+    //create main info embed to be sent in #criminal-records
     const main_embed = new MessageEmbed()
         .setColor(utils.colors.green)
         .addFields([
@@ -104,7 +109,7 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
             },
             {
                 name: 'Prior offenses:',
-                value: `${prior_offenses}` || 'None.'
+                value: prior_offenses_str || 'None.'
             },
             {
                 name: 'Time of jail:',
@@ -116,12 +121,13 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
             }
         ]);
 
+    //array for MessageOptions
     const embeds = [main_embed];
-
+    //add reference message to embed array (this is jail command was used from message context menu)
     if (ref_msg_embed)
         embeds.push(ref_msg_embed);
 
-    //buttons for managing jail instance
+    //create buttons for managing jail instance
     const unjail_button = new MessageButton()
         .setLabel('Unjail')
         .setStyle(utils.buttons.green)
@@ -150,8 +156,10 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
         components: [new MessageActionRow().addComponents([unjail_button, timer_button, edit_button, del_button])]
     });
 
-    //I dont really need to await this
-    jail_record.update({ url: records_msg.url }).then(record => jail_data_cache.set(record.id, new JailData(jail_record, role_entries, member, records_msg)) );
+    //update jail record with url of newly sent message
+    jail_record.update({ url: records_msg.url })
+        //then create JailData for cache
+        .then(record => jail_data_cache.set(record.id, new JailData(jail_record, role_entries, member, records_msg)) );
 
     return records_msg.url;
 }
@@ -162,9 +170,10 @@ async function jailMember(member, jailer_user, reason, duration, ref_msg_embed) 
  */
 async function unjailMember(data, unjailer_user) {
 
+    //deconstruct JailData object
     let { record, role_entries, member, message } = data;
 
-    //member could have left the server since being jailed
+    //check member since he could have left the server since being jailed
     if (member) {
         //generate array of ids to add
         const role_ids = [];
@@ -172,22 +181,22 @@ async function unjailMember(data, unjailer_user) {
             role_ids.push(entry.role_id);
         });
 
+        //message displayed in audit log
+        const audit_log_msg = unjailer_user ? `Unjailed by ${unjailer_user.tag}` : 'Unjailed automatically';
+
         //make sure role_ids array isn't empty
         if (role_ids.length) {
-            //display in audit log
-            const audit_log_msg = unjailer_user ? `Unjailed by ${unjailer_user.tag}` : 'Unjailed automatically';
-
             //give member back his roles
             member = await member.roles.add( role_ids, audit_log_msg );
-
-            //removed jailed role
-            member = await member.roles.remove(utils.ids.jailed_role, audit_log_msg);
         }
+
+        //removed jailed role
+        member = await member.roles.remove(utils.ids.jailed_role, audit_log_msg);
     }
 
     //update time of release with current timestamp
     const current_timestamp = utils.getCurrentTimestamp();
-
+    //mark jail record as unjailed so it isn't checked next time
     record = await record.update({ unjailed: true, release_timestamp: current_timestamp });
 
     //update main embed of records message
@@ -198,10 +207,11 @@ async function unjailMember(data, unjailer_user) {
             value: `<t:${current_timestamp}:f>` //change the release time display format from relative to full
         });
 
-    embeds.splice(0, 1, new_embed); //we want to preserve the reference message embed if it existed
+    //we want to preserve the reference message embed if it existed
+    embeds.splice(0, 1, new_embed);
 
     //update buttons
-    const components = message.components[0].components;
+    const components = message.components[0].components; //components[0] is the MessageActionRow, all of its components are buttons
     const unjail_button = new MessageButton(components[0]).setDisabled();
     const timer_button = new MessageButton(components[1]).setDisabled();
     const edit_button = new MessageButton(components[2]);
@@ -217,31 +227,48 @@ async function unjailMember(data, unjailer_user) {
     jail_data_cache.set(record.id, new JailData(record, [], member, message));
 }
 
+/**
+ * Checks jail_data_cache for members that need to be unjailed
+ */
 function checkJailCache() {
     const current_timestamp = utils.getCurrentTimestamp();
-    jail_data_cache.filter(data => !data.record.unjailed && data.record.release_timestamp <= current_timestamp).forEach( data => unjailMember(data).catch(console.error) );
+    //check for records that have not been marked as unjailed and whose release time has been passed
+    jail_data_cache
+        .filter(data => !data.record.unjailed && data.record.release_timestamp !== null && current_timestamp >= data.record.release_timestamp)
+        .forEach(data => unjailMember(data).catch(console.error));
 }
 
+/**
+ * @param {Guild} guild Guild to fetch member from if necessary
+ * @param {Model|string} record_resolvable jail_records Model instance or ID
+ * @returns {JailData} JailData from cache if it exists, otherwise it is created and cached
+ */
 async function getJailData(guild, record_resolvable) {
+    //check if an ID string was passed instead of an actual record Model instance
     const is_resolvable_id = typeof record_resolvable === 'string';
-    const cached_data = jail_data_cache.get(record_resolvable) || false;
+    //try to find ID in cache
+    const cached_data = is_resolvable_id ? jail_data_cache.get(record_resolvable) : false ?? false;
 
+    //return cached_data if it was found
     if (cached_data) {
         return cached_data;
     }
+    //otherwise create new JailData
     else {
+        //fetch record from db if ID was passed, otherwise use the given Model instance
         const record = is_resolvable_id ? await jail_records.findOne({ where: { id: record_resolvable } }) : record_resolvable;
-
+        //fetch guild member
         const member = await guild.members.fetch(record.offender_id);
-
+        //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
         const role_entries = member ? await jailed_roles.findAll({ where: { user_id: member.id } }) : [];
-
+        //fetch message from #criminal-records
         const records_ch = await guild.channels.fetch(utils.ids.records_ch);
         const regexp = record.url.match(/(\d+)$/);
         const message_id = regexp[1];
         const message = await records_ch.messages.fetch(message_id);
-
+        //create new JailData
         const data = new JailData(record, role_entries, member, message)
+        //cache it
         jail_data_cache.set(record.id, data);
 
         return data;
@@ -250,13 +277,12 @@ async function getJailData(guild, record_resolvable) {
 
 async function cacheJailData(guild) {
     const current_timestamp = utils.getCurrentTimestamp();
-
+    //fetch records no older than one day
     const records = await jail_records.findAll({
         where: {
-            jail_timestamp: { [Op.gte]: current_timestamp - 86400 } //cache records no older than one day
+            jail_timestamp: { [Op.gte]: current_timestamp - 86400 }
         }
     });
-
     //create and cache jail data
     records.forEach(record => getJailData(guild, record) );
 }
