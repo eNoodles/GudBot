@@ -18,9 +18,9 @@ module.exports = {
 			console.error(e);
 			
 			interaction.reply({
-				embeds: [utils.createErrorEmbed('There was an error while executing this command.')],
+				embeds: [utils.createErrorEmbed('There was an error while handling this interaction.')],
 				ephemeral: true
-			});
+			}).catch(console.error); //it's possible that the interaction is invalid
 		});
 	}
 };

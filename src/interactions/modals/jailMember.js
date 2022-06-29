@@ -12,7 +12,7 @@ module.exports = {
 
         //no jail overrides
         if (member.roles.cache.has(utils.ids.jailed_role)) {
-            interaction.reply({
+            await interaction.reply({
                 embeds: [utils.createErrorEmbed(`<@${member.id}> is already jailed.`)], 
                 ephemeral: true
             });

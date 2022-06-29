@@ -197,9 +197,9 @@ async function censorMessage(message) {
     if (!censored_followup && attachments) message_options.files = attachments;
 
     //send censored message through webhook
+    const new_msg = await hook.send(message_options);
     //then cache message id and corresponding author id, so that we could check this for the jail context menu command
-    hook.send(message_options)
-        .then(new_msg => censored_cache.set(new_msg.id, message.author.id));
+    censored_cache.set(new_msg.id, message.author.id);
     
     //this is part 2 of large messages
     if (censored_followup) {
@@ -209,8 +209,8 @@ async function censorMessage(message) {
         if (attachments) message_options.files = attachments;
         
         //send and cache ids
-        hook.send(message_options)
-            .then(new_msg => censored_cache.set(new_msg.id, message.author.id));
+        const new_msg = await hook.send(message_options);
+        censored_cache.set(new_msg.id, message.author.id);
     }
 }
 

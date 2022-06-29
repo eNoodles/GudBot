@@ -38,7 +38,7 @@ module.exports = {
                     });
                 }
 
-                interaction.reply({
+                await interaction.reply({
                     embeds: [utils.createErrorEmbed(embed_desc)], 
                     ephemeral: true
                 });
@@ -50,7 +50,7 @@ module.exports = {
         //member was not found
         //this means the message author either left the server, or it is a webhook message that could not be found in cache
         if (!member) {
-            interaction.reply({
+            await interaction.reply({
                 embeds: [utils.createErrorEmbed(`Something has gone wrong, <@${message.author.id}> is not a member of this server.`)], 
                 ephemeral: true
             });
@@ -60,7 +60,7 @@ module.exports = {
 
         //no jail overrides
         if (member.roles.cache.has(utils.ids.jailed_role)) {
-            interaction.reply({
+            await interaction.reply({
                 embeds: [utils.createErrorEmbed(`<@${member.id}> is already jailed.`)], 
                 ephemeral: true
             });

@@ -40,7 +40,7 @@ module.exports = {
             //only proceed if jailer can be determined
             //ignore if jailing was done by bot (to prevent recursion)
             if (jailer_user && !jailer_user.bot) {
-                jailMember(new_member, jailer_user);
+                await jailMember(new_member, jailer_user);
             }
         }
     }

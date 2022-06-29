@@ -78,7 +78,7 @@ module.exports = {
 
                 //make sure string isn't too short or too long
                 if (word.length < 3 || word.length > 50) {
-                    interaction.reply({
+                    await interaction.reply({
                         embeds: [utils.createErrorEmbed(`Please enter a string between 3 - 50 characters.`)], 
                         ephemeral: true
                     });
@@ -87,7 +87,7 @@ module.exports = {
 
                 //no whitespace
                 if (word.match(/\s/)) {
-                    interaction.reply({
+                    await interaction.reply({
                         embeds: [utils.createErrorEmbed(`String must not contain whitespace (spaces, linebreaks, tabs).`)], 
                         ephemeral: true
                     });
@@ -102,7 +102,7 @@ module.exports = {
                     new RegExp(word);
                 }
                 catch(e) {
-                    interaction.reply({
+                    await interaction.reply({
                         embeds: [utils.createErrorEmbed(`\`${word}\` is not a valid regular expression.`)],
                         ephemeral: true
                     });
@@ -110,21 +110,20 @@ module.exports = {
                     return;
                 }
 
-                await blacklist.create({
+                const entry = await blacklist.create({
                     word: word,
                     added_by: user.id
-                }).then(async entry => {
-
-                    //update global regexp
-                    generateBlacklistRegExp();
-
-                    const embed = new MessageEmbed()
-                        .setTitle('Censorship database updated')
-                        .setDescription(`Added \`${entry.word}\` to blacklist.`)
-                        .setColor(utils.colors.green);
-
-                    interaction.reply({ embeds: [embed] });
                 });
+
+                //update global regexp
+                generateBlacklistRegExp();
+
+                const embed = new MessageEmbed()
+                    .setTitle('Censorship database updated')
+                    .setDescription(`Added \`${entry.word}\` to blacklist.`)
+                    .setColor(utils.colors.green);
+
+                await interaction.reply({ embeds: [embed] });
 
                 break;
             }
@@ -146,10 +145,10 @@ module.exports = {
                         .setDescription(`Successfully removed \`${word}\` from blacklist.`)
                         .setColor(utils.colors.green);
 
-                    interaction.reply({ embeds: [embed] });
+                    await interaction.reply({ embeds: [embed] });
                 }
                 else {
-                    interaction.reply({
+                    await interaction.reply({
                         embeds: [utils.createErrorEmbed(`No entry matching \`${word}\` found in database.`)], 
                         ephemeral: true
                     });
@@ -169,28 +168,27 @@ module.exports = {
                 const regexp = mentionable.match(/<(@&?|#)!?(\d+)>/);
                 
                 if (!regexp) {
-                    interaction.reply({
+                    await interaction.reply({
                         embeds: [utils.createErrorEmbed(`Please mention a channel, user or role.`)],
                         ephemeral: true
                     });
                 }
 
-                await whitelist.create({
+                const entry = await whitelist.create({
                     id: regexp[2],
                     type: regexp[1],
                     added_by: user.id
-                }).then(async entry => {
-
-                    //update whitelists
-                    generateWhitelists();
-
-                    const embed = new MessageEmbed()
-                        .setTitle('Censorship database updated')
-                        .setDescription(`Added <${entry.type}${entry.id}> to whitelist.`)
-                        .setColor(utils.colors.green);
-
-                    interaction.reply({ embeds: [embed] });
                 });
+
+                //update whitelists
+                generateWhitelists();
+
+                const embed = new MessageEmbed()
+                    .setTitle('Censorship database updated')
+                    .setDescription(`Added <${entry.type}${entry.id}> to whitelist.`)
+                    .setColor(utils.colors.green);
+
+                await interaction.reply({ embeds: [embed] });
 
                 break;
             }
@@ -202,7 +200,7 @@ module.exports = {
                 const regexp = mentionable.match(/<(?:@&?|#)!?(\d+)>/);
                 
                 if (!regexp) {
-                    interaction.reply({
+                    await interaction.reply({
                         embeds: [utils.createErrorEmbed(`Please mention a channel, user or role.`)],
                         ephemeral: true
                     });
@@ -223,10 +221,10 @@ module.exports = {
                         .setDescription(`Successfully removed ${regexp[0]} from whitelist.`)
                         .setColor(utils.colors.green);
 
-                    interaction.reply({ embeds: [embed] });
+                    await interaction.reply({ embeds: [embed] });
                 }
                 else {
-                    interaction.reply({
+                    await interaction.reply({
                         embeds: [utils.createErrorEmbed(`No entry matching \`${regexp[0]}\`'s ID found in database.`)], 
                         ephemeral: true
                     });
@@ -268,7 +266,7 @@ module.exports = {
                     .setColor(utils.colors.green)
                     .setFooter({ text: 'Use /censor commands to edit' });
 
-                interaction.reply({
+                await interaction.reply({
                     embeds: [embed],
                     ephemeral: interaction.options.getBoolean('ephemeral')
                 });
@@ -276,7 +274,7 @@ module.exports = {
                 break;
             }
             default:
-                interaction.reply({
+                await interaction.reply({
                     embeds: [utils.createErrorEmbed(`Something has gone wrong, received invalid command \`/censor ${subcommand_group} ${subcommand}\``)],
                     ephemeral: true
                 });
