@@ -15,7 +15,24 @@ const webhooks_cache = new Collection();
  * V: Snowflake representing original message author's id
  * @type {Collection<string,string>}
  */
-const censored_cache = new Collection();
+const censored_authors_cache = new Collection();
+
+/**
+ * Caches message author id by corresponding censored message id. Used for looking up author of censored message in "Delete and jail" command.
+ * @param {string} message_id ID of censored message sent by webhook
+ * @param {string} author_id ID of author who sent the original uncensored message
+ */
+ function cacheAuthorId(message_id, author_id) {
+    //message id is the key because there will be no way on knowing who the original author was later
+    censored_authors_cache.set(message_id, author_id);
+    //keep cache under 10000 elements
+    if (censored_authors_cache.size > 10000) {
+        //get first 100 keys
+        const keys = censored_authors_cache.firstKey(100);
+        //delete those elements
+        keys.forEach(key => censored_authors_cache.delete(key));
+    }
+}
 
 /**
  * Finds all blacklist table entries and regenerates blacklist_regexp
@@ -140,26 +157,11 @@ async function censorMessage(message) {
     //if (star_count === 0) return;
     if (!modified) return;
 
-    //append fake reply to beginning of censored message content
+    //prepend fake reply to beginning of censored message content
     if (message.type === 'REPLY') {
-
-        const replied_msg = await message.fetchReference();
-        if (replied_msg) {
-            //if there is no message content, then it must have been an attachment-only message
-            let reply_content = replied_msg.content || '*Click to see attachment*'; //🖻🗎
-
-            if (reply_content.length > 500) {
-                const cutoff_index = utils.findLastSpaceIndex(reply_content, 500);
-                reply_content = reply_content.substring(0, cutoff_index);
-                reply_content = utils.trimWhitespace(reply_content);
-                reply_content = utils.addEllipsisDots(reply_content);
-            }
-
-            //newlines break the quote block so we must reinsert '> ' on each line
-            reply_content = reply_content.replace(/\n/g, '\n> ');
-
-            censored = `> [**${replied_msg.member?.displayName || replied_msg.author.username}** ${reply_content}](${replied_msg.url})\n${censored}`;
-        }
+        //catch exception if reply isnt found (non critical error)
+        const replied_msg = await message.fetchReference().catch(console.error);
+        censored = utils.prependFakeReply(censored, replied_msg);
     }
 
     //split message if it's too big
@@ -194,28 +196,28 @@ async function censorMessage(message) {
     //check if original message had attachments and filter out ones that are above the current guild's upload size limit
     const attachments = [...message.attachments?.filter(file => file.size <= utils.getGuildUploadLimit(message.guild) ).values()];
     //add the attachments to the message if there will be no followup (we dont want the attachments to between the intial and followup message)
-    if (!censored_followup && attachments) message_options.files = attachments;
+    if (!censored_followup && attachments.length > 0) message_options.files = attachments;
 
     //send censored message through webhook
     const new_msg = await hook.send(message_options);
     //then cache message id and corresponding author id, so that we could check this for the jail context menu command
-    censored_cache.set(new_msg.id, message.author.id);
+    cacheAuthorId(new_msg.id, message.author.id);
     
     //this is part 2 of large messages
     if (censored_followup) {
         //reuse the same MessageOptions, just change the text content
         message_options.content = censored_followup;
         //if attachments were not sent with first message
-        if (attachments) message_options.files = attachments;
+        if (attachments.length > 0) message_options.files = attachments;
         
         //send and cache ids
         const new_msg = await hook.send(message_options);
-        censored_cache.set(new_msg.id, message.author.id);
+        cacheAuthorId(new_msg.id, message.author.id);
     }
 }
 
 module.exports = {
-    censored_cache,
+    censored_authors_cache,
     generateBlacklistRegExp,
     getBlacklistRegExp,
     generateWhitelists,

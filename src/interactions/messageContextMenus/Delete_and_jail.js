@@ -1,12 +1,13 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
-const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionRow } = require('discord.js');
+const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionRow, MessageEmbed, MessageButton } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
-const { censored_cache } = require('../../managers/censor_manager');
+const { censored_authors_cache } = require('../../managers/censorManager');
+const { getJailDataByMember, addDeletedMessage } = require('../../managers/jailManager');
 const utils = require('../../utils');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
-        .setName('Jail author')
+        .setName('Delete and jail')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
         .setType(3),
 
@@ -15,12 +16,16 @@ module.exports = {
      */
     async execute(interaction) {
         const message = interaction.targetMessage;
+
+        //delete message no matter what happens with the jailing process
+        await message.delete();
+
         let member = message.member;
 
         //if user clicked on a webhook
         if (message.webhookId) {
             //first check cache
-            const author_id = censored_cache.get(message.id);
+            const author_id = censored_authors_cache.get(message.id);
 
             if (author_id) {
                 member = await interaction.guild.members.fetch(author_id);
@@ -58,12 +63,36 @@ module.exports = {
             return;
         }
 
-        //no jail overrides
+        //attach message to existing record if member is already jailed, otherwise continue with jailing procedure
         if (member.roles.cache.has(utils.ids.jailed_role)) {
+            const data = await getJailDataByMember(member);
+
+            if (!data) {
+                await interaction.reply({
+                    embeds: [utils.createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${utils.ids.jailed_role}> role, but a corresponding record was not found.`)], 
+                    ephemeral: true
+                });
+                return;
+            }
+
+            await addDeletedMessage(data, message, interaction.user);
+
+            //send interaction reply confirming success
+            const embed = new MessageEmbed()
+                .setDescription(`Deleted <@${member.id}>'s message.`)
+                .setColor(utils.colors.green);
+            
+            const view_button = new MessageButton()
+                .setLabel('View record')
+                .setStyle(utils.buttons.link)
+                .setURL(data.message.url);
+                
             await interaction.reply({
-                embeds: [utils.createErrorEmbed(`<@${member.id}> is already jailed.`)], 
+                embeds: [embed],
+                components: [new MessageActionRow().addComponents([view_button])],
                 ephemeral: true
             });
+
             return;
         }
 
