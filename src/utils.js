@@ -1,4 +1,4 @@
-const { MessageEmbed, GuildMember } = require('discord.js');
+const { MessageEmbed, Message, GuildMember } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
 
 const ids = {
@@ -88,9 +88,7 @@ function isAdmin(member) {
  * @returns {string} Member's server name in the form of "nickname (username)" or "username" if no nickname exists
  */
 function getMemberFullName(member) {
-    if (!member)
-        return 'Member not found';
-
+    if (!member) return 'Member not found';
     return `${member.nickname ? `${member.nickname} (${member.user.username})` : member.user.username}`;
 }
 
@@ -142,7 +140,7 @@ function extractImageUrls(content) {
     const urls = [];
 
     //find image urls (including surrounding whitespace), add the url itself to array and replace entire match with nothing
-    content = content.replace(/\s*(https?:\/\/\S+\.(?:png|jpg|jpeg|webp)\S*)\s*/ig, (match, url) => {
+    content = content.replace(/\s*(https?:\/\/\S+\.(?:png|jpg|jpeg|webp|gif)\S*)\s*/ig, (match, url) => {
         urls.push(url);
         found = true;
         return '';
@@ -188,6 +186,56 @@ function getGuildUploadLimit(guild) {
     return guild.premiumTier === 3 ? 100000000 : guild.premiumTier === 2 ? 50000000 : 8000000;
 }
 
+/**
+ * @param {string} content Message content to prepend fake reply to.
+ * @param {Message} replied_msg The message being replied to.
+ * @param {number} max_length Max length of fake reply.
+ * @returns {string} Updated message content with fake reply.
+ */
+function prependFakeReply(content, replied_msg, max_length=200) {
+    if (replied_msg) {
+        //remove fake reply from replied_msg if it had one (we don't want fake reply chaining)
+        let reply_content = replied_msg.content.replace(/> \[[\S\s]+\]\(http.+\)\n/, '');
+        //if there is no message content, then it must have been an attachment-only message
+        reply_content = reply_content || '*Click to see attachment*'; //🖻🗎
+
+        if (reply_content.length > max_length) {
+            const cutoff_index = findLastSpaceIndex(reply_content, max_length);
+            reply_content = reply_content.substring(0, cutoff_index);
+            reply_content = trimWhitespace(reply_content);
+            reply_content = addEllipsisDots(reply_content);
+        }
+
+        //newlines break the quote block so we must reinsert '> ' on each line
+        reply_content = reply_content.replace(/\n/g, '\n> ');
+
+        return `> [**${replied_msg.member?.displayName || replied_msg.author.username}** ${reply_content}](${replied_msg.url})\n${content}`;
+    }
+    else return content;
+}
+
+/**
+ * @param {string} content Message content to append links to.
+ * @param {Message} message The message to take attachments from.
+ * @returns {string} Updated message content with added links.
+ */
+function appendFileLinks(content, message) {
+    //get non image attachments
+    const files = message?.attachments?.filter(file => !file.contentType.startsWith('image'));
+    if (files?.size > 0) {
+        let files_str = '';
+        //use proxy url in case original attachment has been deleted
+        files.forEach(file => files_str += `[${file.name}](${file.proxyURL})\n`);
+        //add linebreaks between existing message content and links
+        if (message.content !== '') content += '\n\n';
+        //add links
+        content += files_str;
+
+        return content;
+    }
+    else return content;
+}
+
 module.exports = {
     ids,
     colors,
@@ -203,5 +251,7 @@ module.exports = {
     findLastSpaceIndex,
     addEllipsisDots,
     trimWhitespace,
-    getGuildUploadLimit
+    getGuildUploadLimit,
+    prependFakeReply,
+    appendFileLinks
 }
