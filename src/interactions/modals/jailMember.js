@@ -33,41 +33,13 @@ module.exports = {
 
         const duration = utils.getDurationSeconds(minutes, hours, days);
 
-        //if a message id is passed, we want to add it as an embed to the jail message
-        let ref_msg_embed = null;
-        if (args[2]) {
-            const ref_msg = await interaction.channel.messages.fetch(args[2]);
-
-            const embed = new MessageEmbed()
-                .setTitle('Jailed for:')
-                .setDescription(ref_msg.content)
-                .setFooter({text: `#${interaction.channel.name}`})
-                .setTimestamp(ref_msg.createdTimestamp);
-    
-            //if message had an image attachment, we want to prioritize that as the embed's image
-            const image = ref_msg.attachments?.filter(file => file.contentType.startsWith('image')).first();
-            if (image) {
-                embed.setImage(image.proxyURL);
-            }
-            //otherwise we check for image urls in the text content (they would have been embedded normally)
-            else {
-                const extract_images = utils.extractImageUrls(ref_msg.content);
-                if (extract_images) {
-                    embed
-                        .setDescription(extract_images.content) //this is the message content with removed urls
-                        .setImage(extract_images.urls[0]);
-                }
-            }
-    
-            ref_msg_embed = embed;
-        }
-
         //jail member and get url of #criminal-records message
-        const jail_message_url = await jailMember(member, interaction.user, reason, duration, ref_msg_embed);
+        //arg[2] is message id
+        const jail_message_url = await jailMember(member, interaction.user, reason, duration, args[2] ?? null);
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()
-            .setDescription(`Jailed <@${member.id}>`)
+            .setDescription(`Deleted message and jailed <@${member.id}>`)
             .setColor(utils.colors.green);
         
         const view_button = new MessageButton()

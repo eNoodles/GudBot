@@ -1,5 +1,5 @@
 const { MessageEmbed, ButtonInteraction } = require('discord.js');
-const { getJailData, unjailMember } = require('../../managers/jail_manager');
+const { getJailDataByRecord, unjailMember } = require('../../managers/jail_manager');
 const utils = require('../../utils');
 
 module.exports = {
@@ -9,15 +9,22 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const record_id = args[1];
-        const data = await getJailData(interaction.guild, record_id);
-        const { member } = data;
+        const data = await getJailDataByRecord(record_id, interaction.guild);
+        
+        if (!data) {
+            interaction.reply({
+                embeds: [utils.createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
+                ephemeral: true
+            });
 
-        //await to catch exceptions
+            return;
+        }
+
         await unjailMember(data, interaction.user);
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()
-            .setDescription(`Unjailed <@${member.id}>`)
+            .setDescription(`Unjailed <@${data.member.id}>`)
             .setColor(utils.colors.green);
 
         await interaction.reply({

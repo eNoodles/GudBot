@@ -1,5 +1,5 @@
 const { MessageActionRow, Modal, ButtonInteraction, TextInputComponent } = require('discord.js');
-const { getJailData } = require('../../managers/jail_manager');
+const { getJailDataByRecord } = require('../../managers/jail_manager');
 
 module.exports = {
     /**
@@ -8,7 +8,17 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const record_id = args[1];
-        const data = await getJailData(interaction.guild, record_id);
+        const data = await getJailDataByRecord(record_id, interaction.guild);
+
+        if (!data) {
+            interaction.reply({
+                embeds: [utils.createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
+                ephemeral: true
+            });
+
+            return;
+        }
+
         const { record, member } = data;
 
         let jail_reason = new TextInputComponent()

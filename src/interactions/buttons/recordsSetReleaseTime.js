@@ -1,5 +1,5 @@
 const { MessageActionRow, Modal, ButtonInteraction, TextInputComponent } = require('discord.js');
-const { getJailData } = require('../../managers/jail_manager');
+const { getJailDataByRecord } = require('../../managers/jail_manager');
 
 module.exports = {
     /**
@@ -8,8 +8,16 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const record_id = args[1];
-        const data = await getJailData(interaction.guild, record_id);
-        const { member } = data;
+        const data = await getJailDataByRecord(record_id, interaction.guild);
+        
+        if (!data) {
+            interaction.reply({
+                embeds: [utils.createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
+                ephemeral: true
+            });
+
+            return;
+        }
 
         const jail_minutes = new TextInputComponent()
             .setCustomId('jail_minutes')
@@ -34,7 +42,7 @@ module.exports = {
 
         const modal = new Modal()
             .setCustomId(`recordsSetReleaseTime|${record_id}`)
-            .setTitle(`Unjail ${member.displayName} in...`)
+            .setTitle(`Unjail ${data.member.displayName} in...`)
             .addComponents(
                 new MessageActionRow().addComponents(jail_minutes),
                 new MessageActionRow().addComponents(jail_hours),

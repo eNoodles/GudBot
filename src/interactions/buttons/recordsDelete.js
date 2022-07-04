@@ -1,5 +1,5 @@
 const { MessageEmbed, MessageButton, ButtonInteraction, MessageActionRow } = require('discord.js');
-const { getJailData, deleteRecord } = require('../../managers/jail_manager');
+const { getJailDataByRecord, deleteRecord } = require('../../managers/jail_manager');
 const utils = require('../../utils');
 
 module.exports = {
@@ -9,8 +9,16 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const record_id = args[1];
-        const data = await getJailData(interaction.guild, record_id);
-        const { record } = data;
+        const data = await getJailDataByRecord(record_id, interaction.guild);
+
+        if (!data) {
+            interaction.reply({
+                embeds: [utils.createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
+                ephemeral: true
+            });
+
+            return;
+        }
 
         //confirm action
         const embed = new MessageEmbed()
@@ -35,7 +43,7 @@ module.exports = {
         
         const filter = i => i.user.id === interaction.user.id && (i.customId === 'confirmRecordsDelete' || i.customId === 'cancelRecordsDelete');
 
-        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 10000, max: 1 });
+        const collector = interaction.channel.createMessageComponentCollector({ filter, time: 20000, max: 1 });
         
         collector.on('collect', async i => {
             try {
@@ -44,10 +52,10 @@ module.exports = {
                     await deleteRecord(data, interaction.user); 
 
                     const embed = new MessageEmbed()
-                        .setDescription(`Successfully deleted jail record from <t:${record.jail_timestamp}:f>`)
+                        .setDescription(`Successfully deleted <@${data.member.id}>'s jail record from <t:${data.record.jail_timestamp}:f>`)
                         .setColor(utils.colors.green);
 
-                    await i.update({
+                    await interaction.channel.send({
                         embeds: [embed],
                         components: []
                     });
