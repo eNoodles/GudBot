@@ -1,5 +1,5 @@
 const { MessageEmbed, MessageButton, ButtonInteraction, MessageActionRow } = require('discord.js');
-const { getJailDataByRecord, deleteRecord } = require('../../managers/jail_manager');
+const { getJailDataByRecord, deleteRecord } = require('../../managers/jailManager');
 const utils = require('../../utils');
 
 module.exports = {

@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { CommandInteraction, MessageEmbed } = require('discord.js');
 const { blacklist, whitelist } = require('../../database/dbObjects');
-const { generateBlacklistRegExp, generateWhitelists } = require('../../managers/censor_manager');
+const { generateBlacklistRegExp, generateWhitelists } = require('../../managers/censorManager');
 const utils = require('../../utils');
 
 module.exports = {
