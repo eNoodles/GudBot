@@ -1,5 +1,5 @@
 const { MessageEmbed, MessageButton, MessageActionRow, ModalSubmitInteraction } = require('discord.js');
-const { jailMember } = require('../../managers/jail_manager');
+const { jailMember } = require('../../managers/jailManager');
 const utils = require('../../utils');
 
 module.exports = {
