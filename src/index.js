@@ -21,7 +21,8 @@ const client = new Client({
         'MESSAGE',
         'CHANNEL',
         'REACTION'
-    ]
+    ],
+    restRequestTimeout: 60000
 });
 
 const event_files = fs.readdirSync('./src/events/').filter(file => file.endsWith('.js'));
