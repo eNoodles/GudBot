@@ -10,7 +10,7 @@ const ids = {
     dl_ch: '486202559951011870',
     dldb_ch: '607310581053128717',
     mod_ch: '860181373468540948',
-    star_ch: '888515334015942676',
+    star_ch: '993917733265756211',
     records_ch: '986712503935447130',
 
     lurker_role: '523883593978609704',
@@ -198,11 +198,11 @@ function prependFakeReply(content, replied_msg, max_length=200) {
         let reply_content = replied_msg.content.replace(/> \[[\S\s]+\]\(http.+\)\n/, '');
         //if there is no message content, then it must have been an attachment-only message
         reply_content = reply_content || '*Click to see attachment*'; //🖻🗎
-
+        //make sure it's not too long
+        reply_content = trimWhitespace(reply_content);
         if (reply_content.length > max_length) {
             const cutoff_index = findLastSpaceIndex(reply_content, max_length);
             reply_content = reply_content.substring(0, cutoff_index);
-            reply_content = trimWhitespace(reply_content);
             reply_content = addEllipsisDots(reply_content);
         }
 
@@ -215,25 +215,19 @@ function prependFakeReply(content, replied_msg, max_length=200) {
 }
 
 /**
- * @param {string} content Message content to append links to.
  * @param {Message} message The message to take attachments from.
- * @returns {string} Updated message content with added links.
+ * @returns {string} Hyperlinks to message's non image attachemnts.
  */
-function appendFileLinks(content, message) {
+function generateFileLinks(message) {
     //get non image attachments
     const files = message?.attachments?.filter(file => !file.contentType.startsWith('image'));
     if (files?.size > 0) {
         let files_str = '';
-        //use proxy url in case original attachment has been deleted
-        files.forEach(file => files_str += `[${file.name}](${file.proxyURL})\n`);
-        //add linebreaks between existing message content and links
-        if (message.content !== '') content += '\n\n';
-        //add links
-        content += files_str;
-
-        return content;
+        //use proxy url for videos in case original attachment has been deleted
+        files.forEach(file => files_str += `[${file.name}](${file.contentType.startsWith('video') ? file.proxyURL : file.url})\n`);
+        return files_str;
     }
-    else return content;
+    else return '';
 }
 
 module.exports = {
@@ -253,5 +247,5 @@ module.exports = {
     trimWhitespace,
     getGuildUploadLimit,
     prependFakeReply,
-    appendFileLinks
+    generateFileLinks
 }
