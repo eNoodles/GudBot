@@ -1,5 +1,5 @@
 require('dotenv').config();
-const utils = require('./src/utils');
+const { ids } = require('./src/utils');
 const { Client, Intents } = require('discord.js');
 const client = new Client({ 
     intents: [
@@ -11,7 +11,7 @@ const client = new Client({
 client.login(process.env.token);
 
 client.once('ready', () => {
-    client.guilds.fetch(utils.ids.guild).then(guild => {
+    client.guilds.fetch(ids.guild).then(guild => {
         guild.commands.set([])
             .then(() => {
                 console.log('Successfully cleared application commands.');

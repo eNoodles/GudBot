@@ -1,6 +1,6 @@
 const { MessageEmbed, MessageButton, MessageActionRow, ModalSubmitInteraction } = require('discord.js');
 const { jailMember } = require('../../managers/jailManager');
-const utils = require('../../utils');
+const { createErrorEmbed, ids, isAdmin, getDurationSeconds, colors, buttons } = require('../../utils');
 
 module.exports = {
     /**
@@ -11,16 +11,16 @@ module.exports = {
         const member = await interaction.guild.members.fetch(args[1]);
 
         //no jail overrides
-        if (member.roles.cache.has(utils.ids.jailed_role)) {
+        if (member.roles.cache.has(ids.jailed_role)) {
             await interaction.reply({
-                embeds: [utils.createErrorEmbed(`<@${member.id}> is already jailed.`)], 
+                embeds: [createErrorEmbed(`<@${member.id}> is already jailed.`)], 
                 ephemeral: true
             });
             return;
         }
 
         //no jailing admins
-        if (!member.manageable || utils.isAdmin(member)) {  
+        if (!member.manageable || isAdmin(member)) {  
             await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
             return;
         }
@@ -31,7 +31,7 @@ module.exports = {
         const hours = parseInt(interaction.fields.getTextInputValue('jail_hours'), 10) || 0;
         const days = parseInt(interaction.fields.getTextInputValue('jail_days'), 10) || 0;
 
-        const duration = utils.getDurationSeconds(minutes, hours, days);
+        const duration = getDurationSeconds(minutes, hours, days);
 
         //jail member and get url of #criminal-records message
         //arg[2] is message id
@@ -40,11 +40,11 @@ module.exports = {
         //send interaction reply confirming success
         const embed = new MessageEmbed()
             .setDescription(`Deleted message and jailed <@${member.id}>`)
-            .setColor(utils.colors.green);
+            .setColor(colors.green);
         
         const view_button = new MessageButton()
             .setLabel('View record')
-            .setStyle(utils.buttons.link)
+            .setStyle(buttons.link)
             .setURL(jail_message_url);
             
         await interaction.reply({

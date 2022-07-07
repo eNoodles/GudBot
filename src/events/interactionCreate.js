@@ -1,4 +1,4 @@
-const utils = require('../utils');
+const { createErrorEmbed } = require('../utils');
 
 module.exports = {
 	async execute(client, interaction) {
@@ -18,7 +18,7 @@ module.exports = {
 			console.error(e);
 			
 			interaction.reply({
-				embeds: [utils.createErrorEmbed('There was an error while handling this interaction.')],
+				embeds: [createErrorEmbed('There was an error while handling this interaction.')],
 				ephemeral: true
 			}).catch(console.error); //it's possible that the interaction is invalid
 		});

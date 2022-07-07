@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { CommandInteraction, MessageEmbed } = require('discord.js');
 const { blacklist, whitelist } = require('../../database/dbObjects');
 const { generateBlacklistRegExp, generateWhitelists } = require('../../managers/censorManager');
-const utils = require('../../utils');
+const { colors, createErrorEmbed } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -79,7 +79,7 @@ module.exports = {
                 //make sure string isn't too short or too long
                 if (word.length < 3 || word.length > 50) {
                     await interaction.reply({
-                        embeds: [utils.createErrorEmbed(`Please enter a string between 3 - 50 characters.`)], 
+                        embeds: [createErrorEmbed(`Please enter a string between 3 - 50 characters.`)], 
                         ephemeral: true
                     });
                     return;
@@ -88,7 +88,7 @@ module.exports = {
                 //no whitespace
                 if (word.match(/\s/)) {
                     await interaction.reply({
-                        embeds: [utils.createErrorEmbed(`String must not contain whitespace (spaces, linebreaks, tabs).`)], 
+                        embeds: [createErrorEmbed(`String must not contain whitespace (spaces, linebreaks, tabs).`)], 
                         ephemeral: true
                     });
                     return;
@@ -103,7 +103,7 @@ module.exports = {
                 }
                 catch(e) {
                     await interaction.reply({
-                        embeds: [utils.createErrorEmbed(`\`${word}\` is not a valid regular expression.`)],
+                        embeds: [createErrorEmbed(`\`${word}\` is not a valid regular expression.`)],
                         ephemeral: true
                     });
 
@@ -121,7 +121,7 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setTitle('Censorship database updated')
                     .setDescription(`Added \`${entry.word}\` to blacklist.`)
-                    .setColor(utils.colors.green);
+                    .setColor(colors.green);
 
                 await interaction.reply({ embeds: [embed] });
 
@@ -143,13 +143,13 @@ module.exports = {
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
                         .setDescription(`Successfully removed \`${word}\` from blacklist.`)
-                        .setColor(utils.colors.green);
+                        .setColor(colors.green);
 
                     await interaction.reply({ embeds: [embed] });
                 }
                 else {
                     await interaction.reply({
-                        embeds: [utils.createErrorEmbed(`No entry matching \`${word}\` found in database.`)], 
+                        embeds: [createErrorEmbed(`No entry matching \`${word}\` found in database.`)], 
                         ephemeral: true
                     });
                 }
@@ -169,7 +169,7 @@ module.exports = {
                 
                 if (!regexp) {
                     await interaction.reply({
-                        embeds: [utils.createErrorEmbed(`Please mention a channel, user or role.`)],
+                        embeds: [createErrorEmbed(`Please mention a channel, user or role.`)],
                         ephemeral: true
                     });
                 }
@@ -186,7 +186,7 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setTitle('Censorship database updated')
                     .setDescription(`Added <${entry.type}${entry.id}> to whitelist.`)
-                    .setColor(utils.colors.green);
+                    .setColor(colors.green);
 
                 await interaction.reply({ embeds: [embed] });
 
@@ -201,7 +201,7 @@ module.exports = {
                 
                 if (!regexp) {
                     await interaction.reply({
-                        embeds: [utils.createErrorEmbed(`Please mention a channel, user or role.`)],
+                        embeds: [createErrorEmbed(`Please mention a channel, user or role.`)],
                         ephemeral: true
                     });
                 }
@@ -219,13 +219,13 @@ module.exports = {
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
                         .setDescription(`Successfully removed ${regexp[0]} from whitelist.`)
-                        .setColor(utils.colors.green);
+                        .setColor(colors.green);
 
                     await interaction.reply({ embeds: [embed] });
                 }
                 else {
                     await interaction.reply({
-                        embeds: [utils.createErrorEmbed(`No entry matching \`${regexp[0]}\`'s ID found in database.`)], 
+                        embeds: [createErrorEmbed(`No entry matching \`${regexp[0]}\`'s ID found in database.`)], 
                         ephemeral: true
                     });
                 }
@@ -263,7 +263,7 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setTitle('Censorship database')
                     .setDescription(desc)
-                    .setColor(utils.colors.green)
+                    .setColor(colors.green)
                     .setFooter({ text: 'Use /censor commands to edit' });
 
                 await interaction.reply({
@@ -275,7 +275,7 @@ module.exports = {
             }
             default:
                 await interaction.reply({
-                    embeds: [utils.createErrorEmbed(`Something has gone wrong, received invalid command \`/censor ${subcommand_group} ${subcommand}\``)],
+                    embeds: [createErrorEmbed(`Something has gone wrong, received invalid command \`/censor ${subcommand_group} ${subcommand}\``)],
                     ephemeral: true
                 });
         }

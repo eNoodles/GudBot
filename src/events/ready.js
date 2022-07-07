@@ -1,5 +1,5 @@
-const { cacheJailData, checkJailCache } = require('../managers/jail_manager');
-const { generateBlacklistRegExp, generateWhitelists } = require('../managers/censor_manager');
+const { cacheJailData, checkJailCache } = require('../managers/jailManager');
+const { generateBlacklistRegExp, generateWhitelists } = require('../managers/censorManager');
 const { ids } = require('../utils');
 
 module.exports = {

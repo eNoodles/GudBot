@@ -1,6 +1,6 @@
 const { MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection } = require('discord.js');
 const { Op, jail_records, jailed_roles} = require('../database/dbObjects');
-const utils = require('../utils');
+const { ids, colors, buttons, getCurrentTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots } = require('../utils');
 
 /**
  * @type {Collection<string, JailData>} 
@@ -33,11 +33,11 @@ class JailData {
 async function jailMember(member, jailer_user, reason, duration, deleted_id) {
     const offender_id = member.id;
     const jailer_id = jailer_user.id;
-    const jail_timestamp = utils.getCurrentTimestamp();
+    const jail_timestamp = getCurrentTimestamp();
     const release_timestamp = duration ? jail_timestamp + duration : null;
 
     //get collection of member's roles, apart from base @@everyone role and jailed role
-    const roles = member.roles.cache.filter(role => role.id !== utils.ids.guild && role.id !== utils.ids.jailed_role);
+    const roles = member.roles.cache.filter(role => role.id !== ids.guild && role.id !== ids.jailed_role);
     //used for cached JailData
     const role_entries = [];
     //used for main embed
@@ -99,11 +99,11 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
         //remove member's roles
         member = await member.roles.remove( roles, audit_log_msg );
         //add jailed role
-        member = await member.roles.add(utils.ids.jailed_role, audit_log_msg);
+        member = await member.roles.add(ids.jailed_role, audit_log_msg);
 
         //create main info embed to be sent in #criminal-records
         const main_embed = new MessageEmbed()
-            .setColor(utils.colors.green)
+            .setColor(colors.green)
             .addField('Jailed:', `<@${offender_id}>`, true)
             .addField('By:', `<@${jailer_id}>`, true)
             .addField('Reason:', reason || 'Not given.')
@@ -125,27 +125,27 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
         //create buttons for managing jail instance
         const unjail_button = new MessageButton()
             .setLabel('Unjail user')
-            .setStyle(utils.buttons.green)
+            .setStyle(buttons.green)
             .setCustomId(`recordsUnjail|${jail_record.id}`);
 
         const timer_button = new MessageButton()
             .setLabel('Set release time')
-            .setStyle(utils.buttons.blurple)
+            .setStyle(buttons.blurple)
             .setCustomId(`recordsSetReleaseTime|${jail_record.id}`);
         
         const edit_button = new MessageButton()
             .setLabel('Edit reason')
-            .setStyle(utils.buttons.gray)
+            .setStyle(buttons.gray)
             .setCustomId(`recordsEdit|${jail_record.id}`);
 
         const del_button = new MessageButton()
             .setLabel('\u200b Delete record  \u200b')
-            .setStyle(utils.buttons.red)
+            .setStyle(buttons.red)
             .setCustomId(`recordsDelete|${jail_record.id}`)
             .setDisabled();
 
         //send generated jail message to #criminal-records
-        const channel = await member.guild.channels.fetch(utils.ids.records_ch);
+        const channel = await member.guild.channels.fetch(ids.records_ch);
         var records_msg = await channel.send({
             embeds: embeds,
             components: [
@@ -219,18 +219,18 @@ async function unjailMember(data, unjailer_user) {
         }
 
         //removed jailed role
-        member = await member.roles.remove(utils.ids.jailed_role, audit_log_msg);
+        member = await member.roles.remove(ids.jailed_role, audit_log_msg);
     }
 
     //update time of release with current timestamp
-    const current_timestamp = utils.getCurrentTimestamp();
+    const current_timestamp = getCurrentTimestamp();
     //mark jail record as unjailed so it isn't checked next time
     record = await record.update({ unjailed: true, release_timestamp: current_timestamp });
 
     //update main embed of records message
     const { embeds } = message;
     const new_embed = new MessageEmbed(embeds[0])
-        .setColor(utils.colors.blurple)
+        .setColor(colors.blurple)
         .spliceFields(6, 1, {
             name: 'Time of release:',
             value: `<t:${current_timestamp}:f>` //change the release time display format from relative to full
@@ -255,7 +255,7 @@ async function unjailMember(data, unjailer_user) {
             new MessageActionRow().addComponents([unjail_button, timer_button]),
             new MessageActionRow().addComponents([edit_button, del_button])
         ]
-    }).catch(console.log(`Failed to edit message #${message.id}`));
+    }).catch(console.error);
 
     //update cache
     jail_data_cache.set(record.id, new JailData(record, [], member, message));
@@ -274,7 +274,7 @@ async function updateDuration(data, duration, updater_user) {
     if (record.unjailed) throw 'Jail record already marked as unjailed!';
 
     //update time of release
-    const current_timestamp = utils.getCurrentTimestamp();
+    const current_timestamp = getCurrentTimestamp();
     const release_timestamp = current_timestamp + duration;
     record = await record.update({ release_timestamp: release_timestamp });
 
@@ -425,7 +425,7 @@ async function getJailDataByRecord(record_resolvable, guild) {
             //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
             const role_entries = member ? await jailed_roles.findAll({ where: { user_id: member.id } }) : [];
             //fetch message #criminal-records
-            const records_ch = await guild.channels.fetch(utils.ids.records_ch);
+            const records_ch = await guild.channels.fetch(ids.records_ch);
             const regexp = record.url.match(/(\d+)$/);
             const message_id = regexp[1];
             const message = await records_ch.messages.fetch(message_id);
@@ -449,10 +449,10 @@ async function getJailDataByRecord(record_resolvable, guild) {
  */
 async function getJailDataByMember(member, active=true) {
     //check cache for entry belonging to member
-    const cached_data = jail_data_cache.filter(data => 
+    const cached_data = jail_data_cache.find(data => 
         data.member.id === member.id && 
         (!active || !data.record.unjailed) //if active record requested (default), find record that is marked as unjailed
-    ).first();
+    );
 
     //return cached_data if it was found
     if (cached_data) {
@@ -469,7 +469,7 @@ async function getJailDataByMember(member, active=true) {
             //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
             const role_entries = member ? await jailed_roles.findAll({ where: { user_id: member.id } }) : [];
             //fetch message from #criminal-records
-            const records_ch = await member.guild.channels.fetch(utils.ids.records_ch);
+            const records_ch = await member.guild.channels.fetch(ids.records_ch);
             const regexp = record.url.match(/(\d+)$/);
             const message_id = regexp[1];
             const message = await records_ch.messages.fetch(message_id);
@@ -496,7 +496,7 @@ async function getJailDataByMessage(message_resolvable, guild) {
     const is_resolvable_url = typeof message_resolvable === 'string';
     const url = is_resolvable_url ? message_resolvable : message_resolvable.url;
     //check cache for entry with given message
-    const cached_data = jail_data_cache.filter(data => data.message.url === url).first();
+    const cached_data = jail_data_cache.find(data => data.message.url === url);
 
     //return cached_data if it was found
     if (cached_data) {
@@ -511,7 +511,7 @@ async function getJailDataByMessage(message_resolvable, guild) {
             //fetch message from #criminal-records if url was given
             let message = message_resolvable;
             if (is_resolvable_url) {
-                const records_ch = await guild.channels.fetch(utils.ids.records_ch);
+                const records_ch = await guild.channels.fetch(ids.records_ch);
                 const regexp = url.match(/(\d+)$/);
                 const message_id = regexp[1];
                 message = await records_ch.messages.fetch(message_id);
@@ -536,7 +536,7 @@ async function getJailDataByMessage(message_resolvable, guild) {
  * Checks jail_data_cache for members that need to be unjailed
  */
 function checkJailCache() {
-    const current_timestamp = utils.getCurrentTimestamp();
+    const current_timestamp = getCurrentTimestamp();
     //check for records that have not been marked as unjailed and whose release time has been passed
     jail_data_cache
         .filter(data => !data.record.unjailed && data.record.release_timestamp !== null && current_timestamp >= data.record.release_timestamp)
@@ -544,7 +544,7 @@ function checkJailCache() {
 }
 
 async function cacheJailData(guild) {
-    const current_timestamp = utils.getCurrentTimestamp();
+    const current_timestamp = getCurrentTimestamp();
     //fetch records no older than one day
     const records = await jail_records.findAll({
         where: {
@@ -589,12 +589,12 @@ async function createDeletedMessageEmbed(message) {
         .setTimestamp(message.createdTimestamp);
 
     //if message had an image attachment, we want to prioritize that as the embed's image
-    const image = message.attachments?.filter(file => file.contentType.startsWith('image')).first();
+    const image = message.attachments?.find(file => file.contentType.startsWith('image'));
     if (image)
         embed.setImage(image.proxyURL);
     //otherwise we check for image urls in the text content (they would have been embedded normally)
     else {
-        const extract_images = utils.extractImageUrls(message.content);
+        const extract_images = extractImageUrls(content);
         if (extract_images) {
             embed.setImage(extract_images.urls[0]);
             content = extract_images.content; //this is the message content with removed urls        
@@ -606,20 +606,28 @@ async function createDeletedMessageEmbed(message) {
         //try checking cache before fetching message
         //catch exception if reply isnt found (non critical error)
         const replied_msg = deleted_cache.get(message.reference.messageId) || await message.fetchReference().catch(console.error);
-        content = utils.prependFakeReply(content, replied_msg);
+        content = prependFakeReply(content, replied_msg);
     }
 
+    const file_links = generateFileLinks(message);
+
     //make sure content isn't over 2000 chars
-    //the actual limit is 4096 (and 6000 for the entire embed), but I don't want these to be too long
-    if (content.length > 2000) {
-        const cutoff_index = utils.findLastSpaceIndex(content, 2000);
+    content = trimWhitespace(content);
+    //the actual limit is 4096, but I don't want these to be too long as the limit for all embeds in a message is only 6000
+    const max_length = 2000 - file_links.length;
+    if (content.length > max_length) {
+        const cutoff_index = findLastSpaceIndex(content, max_length);
         content = content.substring(0, cutoff_index);
-        content = utils.trimWhitespace(content);
-        content = utils.addEllipsisDots(content);
+        content = addEllipsisDots(content);
     }
 
     //add non image attachments as hyperlinks to the end of the message
-    content = utils.appendFileLinks(content, message);
+    if (file_links) {
+        //add linebreaks between existing message content and links
+        if (content !== '') content += '\n\n';
+        //add links
+        content += file_links;
+    }
 
     //set finalized content as embed description
     embed.setDescription(content);

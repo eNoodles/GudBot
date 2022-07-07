@@ -1,4 +1,4 @@
-const { censorMessage } = require('../managers/censor_manager');
+const { censorMessage } = require('../managers/censorManager');
 
 module.exports = {
 	async execute(client, message) {

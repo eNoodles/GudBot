@@ -1,6 +1,6 @@
 const { MessageEmbed, ModalSubmitInteraction } = require('discord.js');
-const { getJailDataByRecord, updateDuration } = require('../../managers/jail_manager');
-const utils = require('../../utils');
+const { getJailDataByRecord, updateDuration } = require('../../managers/jailManager');
+const { createErrorEmbed, getDurationSeconds, colors } = require('../../utils');
 
 module.exports = {
     /**
@@ -13,7 +13,7 @@ module.exports = {
         
         if (!data) {
             interaction.reply({
-                embeds: [utils.createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
+                embeds: [createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
                 ephemeral: true
             });
 
@@ -24,7 +24,7 @@ module.exports = {
         const hours = parseInt(interaction.fields.getTextInputValue('jail_hours'), 10) || 0;
         const days = parseInt(interaction.fields.getTextInputValue('jail_days'), 10) || 0;
 
-        const duration = utils.getDurationSeconds(minutes, hours, days);
+        const duration = getDurationSeconds(minutes, hours, days);
 
         if (duration) {
 
@@ -33,7 +33,7 @@ module.exports = {
             //send interaction reply confirming success
             const embed = new MessageEmbed()
                 .setDescription(`Updated release time of <@${data.member.id}>`)
-                .setColor(utils.colors.green);
+                .setColor(colors.green);
 
             await interaction.reply({
                 embeds: [embed],
@@ -42,7 +42,7 @@ module.exports = {
         }
         else {
             await interaction.reply({
-                embeds: [utils.createErrorEmbed('Please enter a valid duration.')],
+                embeds: [createErrorEmbed('Please enter a valid duration.')],
                 ephemeral: true
             });
         }

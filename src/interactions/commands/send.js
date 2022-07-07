@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { CommandInteraction, MessageButton, MessageActionRow } = require('discord.js');
-const utils = require('../../utils');
+const { buttons } = require('../../utils');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -19,7 +19,7 @@ module.exports = {
 
         const edit_button = new MessageButton()
             .setLabel('Edit')
-            .setStyle(utils.buttons.gray)
+            .setStyle(buttons.gray)
             .setCustomId(`editSentMessage|${message.id}`);
 
         await interaction.reply({

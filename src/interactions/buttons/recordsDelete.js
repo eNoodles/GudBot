@@ -1,6 +1,6 @@
 const { MessageEmbed, MessageButton, ButtonInteraction, MessageActionRow } = require('discord.js');
 const { getJailDataByRecord, deleteRecord } = require('../../managers/jailManager');
-const utils = require('../../utils');
+const { createErrorEmbed, colors, buttons } = require('../../utils');
 
 module.exports = {
     /**
@@ -13,7 +13,7 @@ module.exports = {
 
         if (!data) {
             interaction.reply({
-                embeds: [utils.createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
+                embeds: [createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
                 ephemeral: true
             });
 
@@ -24,16 +24,16 @@ module.exports = {
         const embed = new MessageEmbed()
             .setTitle('Are you sure?')
             .setDescription(`This jail record's information will be permanently erased.`)
-            .setColor(utils.colors.blurple);
+            .setColor(colors.blurple);
 
         const yes_button = new MessageButton()
             .setLabel('Yes')
-            .setStyle(utils.buttons.green)
+            .setStyle(buttons.green)
             .setCustomId(`confirmRecordsDelete`);
 
         const no_button = new MessageButton()
             .setLabel('No')
-            .setStyle(utils.buttons.red)
+            .setStyle(buttons.red)
             .setCustomId(`cancelRecordsDelete`);
 
         await interaction.reply({
@@ -53,7 +53,7 @@ module.exports = {
 
                     const embed = new MessageEmbed()
                         .setDescription(`Successfully deleted <@${data.member.id}>'s jail record from <t:${data.record.jail_timestamp}:f>`)
-                        .setColor(utils.colors.green);
+                        .setColor(colors.green);
 
                     await interaction.channel.send({
                         embeds: [embed],
@@ -69,7 +69,7 @@ module.exports = {
                 console.error(e);
 
                 i.reply({
-                    embeds: [utils.createErrorEmbed('There was an error while handling this interaction.')],
+                    embeds: [createErrorEmbed('There was an error while handling this interaction.')],
                     ephemeral: true
                 }).catch(console.error); //it's possible that the interaction is invalid
             }

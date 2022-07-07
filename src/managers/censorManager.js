@@ -1,6 +1,6 @@
 const { Message, TextChannel, Webhook, Collection } = require('discord.js');
 const { blacklist, whitelist } = require('../database/dbObjects');
-const utils = require('../utils');
+const { ids, prependFakeReply, findLastSpaceIndex, getGuildUploadLimit } = require('../utils');
 
 let blacklist_regexp = new RegExp('', 'ig');
 
@@ -96,13 +96,22 @@ function checkWhitelists(message) {
  * @param {TextChannel} channel
  * @returns {Webhook} Fetched or newly created GudBot-owned webhook
  */
- async function fetchOrCreateHook(channel) {
-    const hook = 
-        (await channel.fetchWebhooks()).find(hook => hook.owner.id === utils.ids.client) || //fetch channel's webhooks and fine the one created by GudBut
-        await channel.createWebhook('GudBot'); //if it doesn't exist, create it
+async function fetchOrCreateHook(channel) {
+    //first check local cache
+    let hook = webhooks_cache.get(channel.id);
+    if (hook) return hook;
 
-    webhooks_cache.set(channel.id, hook); //map to cache
+    //then fetch and check channel's existing webhooks
+    hook = (await channel.fetchWebhooks())?.find(hook => hook.owner.id === ids.client);
+    if (hook) {
+        //cache it
+        webhooks_cache.set(channel.id, hook);
+        return hook;
+    }
 
+    //if it doesn't exist, create and cache it
+    hook = await channel.createWebhook('GudBot');
+    webhooks_cache.set(channel.id, hook);
     return hook;
 }
 
@@ -117,9 +126,8 @@ async function censorMessage(message) {
 
     //fetch/create channel webhook if it's not in cache
     //we do this on every messageCreate, not just the ones that need to be censored, so as to populate the cache
-    const hook = webhooks_cache.get(channel.id) || await fetchOrCreateHook(channel);
+    const hook = await fetchOrCreateHook(channel);
 
-    //const regexp = utils.getBlacklistRegExp();
     //don't do anything if regexp is empty
     if (blacklist_regexp.source === '(?:)') return;
 
@@ -161,7 +169,7 @@ async function censorMessage(message) {
     if (message.type === 'REPLY') {
         //catch exception if reply isnt found (non critical error)
         const replied_msg = await message.fetchReference().catch(console.error);
-        censored = utils.prependFakeReply(censored, replied_msg);
+        censored = prependFakeReply(censored, replied_msg);
     }
 
     //split message if it's too big
@@ -170,7 +178,7 @@ async function censorMessage(message) {
     const max_length = 2000; // - star_count;
     if (censored.length > max_length) {
 
-        const cutoff_index = utils.findLastSpaceIndex(censored, max_length);
+        const cutoff_index = findLastSpaceIndex(censored, max_length);
         censored_followup = censored.substring( cutoff_index );
 
         //if cutoff point was a newline, add fake bold ** ** to preserve it in the beginning of the followup message
@@ -194,7 +202,7 @@ async function censorMessage(message) {
     };
 
     //check if original message had attachments and filter out ones that are above the current guild's upload size limit
-    const attachments = [...message.attachments?.filter(file => file.size <= utils.getGuildUploadLimit(message.guild) ).values()];
+    const attachments = [...message.attachments?.filter(file => file.size <= getGuildUploadLimit(message.guild) ).values()];
     //add the attachments to the message if there will be no followup (we dont want the attachments to between the intial and followup message)
     if (!censored_followup && attachments.length > 0) message_options.files = attachments;
 

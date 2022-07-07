@@ -3,7 +3,7 @@ const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionR
 const { PermissionFlagsBits } = require('discord-api-types/v10');
 const { censored_authors_cache } = require('../../managers/censorManager');
 const { getJailDataByMember, addDeletedMessage } = require('../../managers/jailManager');
-const utils = require('../../utils');
+const { createErrorEmbed, ids, colors, buttons, isAdmin } = require('../../utils');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
@@ -44,7 +44,7 @@ module.exports = {
                 }
 
                 await interaction.reply({
-                    embeds: [utils.createErrorEmbed(embed_desc)], 
+                    embeds: [createErrorEmbed(embed_desc)], 
                     ephemeral: true
                 });
     
@@ -56,7 +56,7 @@ module.exports = {
         //this means the message author either left the server, or it is a webhook message that could not be found in cache
         if (!member) {
             await interaction.reply({
-                embeds: [utils.createErrorEmbed(`Something has gone wrong, <@${message.author.id}> is not a member of this server.`)], 
+                embeds: [createErrorEmbed(`Something has gone wrong, <@${message.author.id}> is not a member of this server.`)], 
                 ephemeral: true
             });
 
@@ -64,12 +64,12 @@ module.exports = {
         }
 
         //attach message to existing record if member is already jailed, otherwise continue with jailing procedure
-        if (member.roles.cache.has(utils.ids.jailed_role)) {
+        if (member.roles.cache.has(ids.jailed_role)) {
             const data = await getJailDataByMember(member);
 
             if (!data) {
                 await interaction.reply({
-                    embeds: [utils.createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${utils.ids.jailed_role}> role, but a corresponding record was not found.`)], 
+                    embeds: [createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${ids.jailed_role}> role, but a corresponding record was not found.`)], 
                     ephemeral: true
                 });
                 return;
@@ -80,11 +80,11 @@ module.exports = {
             //send interaction reply confirming success
             const embed = new MessageEmbed()
                 .setDescription(`Deleted <@${member.id}>'s message.`)
-                .setColor(utils.colors.green);
+                .setColor(colors.green);
             
             const view_button = new MessageButton()
                 .setLabel('View record')
-                .setStyle(utils.buttons.link)
+                .setStyle(buttons.link)
                 .setURL(data.message.url);
                 
             await interaction.reply({
@@ -97,7 +97,7 @@ module.exports = {
         }
 
         //no jailing admins
-        if (!member.manageable || utils.isAdmin(member)) {  
+        if (!member.manageable || isAdmin(member)) {  
             await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
             return;
         }

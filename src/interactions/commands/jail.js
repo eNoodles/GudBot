@@ -1,8 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, CommandInteraction, MessageButton } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
-const { jailMember } = require('../../managers/jail_manager');
-const utils = require('../../utils');
+const { jailMember } = require('../../managers/jailManager');
+const { generateIntegerChoices, ids, createErrorEmbed, isAdmin, getDurationSeconds, colors, buttons } = require('../../utils');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -29,14 +29,14 @@ module.exports = {
             .setDescription('Hours of jailtime before release.')
             .setMinValue(1)
             .setMaxValue(24)
-            .setChoices( ...utils.generateIntegerChoices(1, 24) )
+            .setChoices( ...generateIntegerChoices(1, 24) )
         )
         .addIntegerOption(option => option
             .setName('days')
             .setDescription('Days of jailtime before release.')
             .setMinValue(1)
             .setMaxValue(24)
-            .setChoices( ...utils.generateIntegerChoices(1, 24) )
+            .setChoices( ...generateIntegerChoices(1, 24) )
         ),
 
     /**
@@ -46,16 +46,16 @@ module.exports = {
         const member = interaction.options.getMember('user');
 
         //no jail overrides
-        if (member.roles.cache.has(utils.ids.jailed_role)) {
+        if (member.roles.cache.has(ids.jailed_role)) {
             await interaction.reply({
-                embeds: [utils.createErrorEmbed(`<@${member.id}> is already jailed.`)], 
+                embeds: [createErrorEmbed(`<@${member.id}> is already jailed.`)], 
                 ephemeral: true
             });
             return;
         }
 
         //no jailing admins
-        if (!member.manageable || utils.isAdmin(member)) {  
+        if (!member.manageable || isAdmin(member)) {  
             await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
             return;
         }
@@ -66,18 +66,18 @@ module.exports = {
         const hours = interaction.options.getInteger('hours') || 0;
         const days = interaction.options.getInteger('days') || 0;
 
-        const duration = utils.getDurationSeconds(minutes, hours, days);
+        const duration = getDurationSeconds(minutes, hours, days);
 
         const jail_message_url = await jailMember(member, interaction.user, reason, duration);
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()
             .setDescription(`Jailed <@${member.id}>`)
-            .setColor(utils.colors.green);
+            .setColor(colors.green);
         
         const view_button = new MessageButton()
             .setLabel('View record')
-            .setStyle(utils.buttons.link)
+            .setStyle(buttons.link)
             .setURL(jail_message_url);
             
         await interaction.reply({

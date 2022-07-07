@@ -1,7 +1,6 @@
 require('dotenv').config();
 const fs = require('fs');
-const utils = require('./src/utils');
-
+const { ids } = require('./src/utils');
 const { REST } = require('@discordjs/rest');
 const { Routes } = require('discord-api-types/v9');
 
@@ -19,6 +18,6 @@ const commands = [];
 
 const rest = new REST({ version: '9' }).setToken(process.env.token);
 
-rest.put(Routes.applicationGuildCommands(utils.ids.client, utils.ids.guild), { body: commands })
+rest.put(Routes.applicationGuildCommands(ids.client, ids.guild), { body: commands })
 	.then(() => console.log('Successfully registered application commands.'))
 	.catch(console.error);

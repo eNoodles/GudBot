@@ -1,5 +1,5 @@
 const { MessageButton, MessageActionRow, ModalSubmitInteraction } = require('discord.js');
-const utils = require('../../utils');
+const { buttons } = require('../../utils');
 
 module.exports = {
     /**
@@ -16,7 +16,7 @@ module.exports = {
 
         const edit_button = new MessageButton()
             .setLabel('Edit')
-            .setStyle(utils.buttons.gray)
+            .setStyle(buttons.gray)
             .setCustomId(`editSentMessage|${message.id}`);
 
         await interaction.update({

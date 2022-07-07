@@ -1,6 +1,6 @@
 const { MessageEmbed, ButtonInteraction } = require('discord.js');
-const { getJailDataByRecord, unjailMember } = require('../../managers/jail_manager');
-const utils = require('../../utils');
+const { getJailDataByRecord, unjailMember } = require('../../managers/jailManager');
+const { createErrorEmbed, colors } = require('../../utils');
 
 module.exports = {
     /**
@@ -13,7 +13,7 @@ module.exports = {
         
         if (!data) {
             interaction.reply({
-                embeds: [utils.createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
+                embeds: [createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
                 ephemeral: true
             });
 
@@ -25,7 +25,7 @@ module.exports = {
         //send interaction reply confirming success
         const embed = new MessageEmbed()
             .setDescription(`Unjailed <@${data.member.id}>`)
-            .setColor(utils.colors.green);
+            .setColor(colors.green);
 
         await interaction.reply({
             embeds: [embed],

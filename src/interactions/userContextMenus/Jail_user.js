@@ -1,7 +1,7 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { UserContextMenuInteraction, TextInputComponent, Modal, MessageActionRow } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
-const utils = require('../../utils');
+const { createErrorEmbed, isAdmin, ids } = require('../../utils');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
@@ -16,16 +16,16 @@ module.exports = {
         const member = interaction.targetMember;
 
         //no jail overrides
-        if (member.roles.cache.has(utils.ids.jailed_role)) {
+        if (member.roles.cache.has(ids.jailed_role)) {
             await interaction.reply({
-                embeds: [utils.createErrorEmbed(`<@${member.id}> is already jailed.`)], 
+                embeds: [createErrorEmbed(`<@${member.id}> is already jailed.`)], 
                 ephemeral: true
             });
             return;
         }
 
         //no jailing admins
-        if (!member.manageable || utils.isAdmin(member)) {  
+        if (!member.manageable || isAdmin(member)) {  
             await interaction.reply({ content: 'https://media.discordapp.net/attachments/840211595186536478/889653037201760326/nochamp.gif', ephemeral: true });
             return;
         }

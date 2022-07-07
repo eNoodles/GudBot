@@ -11,7 +11,7 @@ module.exports = {
         // });
 
         // //make sure we got the right one by cross referencing audit log entry target and message
-        // const message_delete_entry = audit_logs.entries.filter(entry => entry.target.id === message.id).first();
+        // const message_delete_entry = audit_logs.entries.find(entry => entry.target.id === message.id);
         // const deleter = message_delete_entry?.executor ?? message.author;
 
         //potential jail record deletion by user

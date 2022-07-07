@@ -1,5 +1,6 @@
 const { MessageActionRow, Modal, ButtonInteraction, TextInputComponent } = require('discord.js');
-const { getJailDataByRecord } = require('../../managers/jail_manager');
+const { getJailDataByRecord } = require('../../managers/jailManager');
+const { createErrorEmbed } = require('../../utils');
 
 module.exports = {
     /**
@@ -12,7 +13,7 @@ module.exports = {
 
         if (!data) {
             interaction.reply({
-                embeds: [utils.createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
+                embeds: [createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
                 ephemeral: true
             });
 
