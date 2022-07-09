@@ -57,10 +57,12 @@ const buttons = {
 };
 
 /**
- * @returns Current time in Unix system - seconds passed since 1/1/1970
+ * @param {Date} [date] Date object to convert to unix timestamp. If not given, get current date.
+ * @returns Get time in Unix system - seconds passed since 1/1/1970
  */
-function getCurrentTimestamp() {
-    return Math.floor(new Date().getTime() / 1000);
+function getUnixTimestamp(date) {
+    date = date ?? new Date();
+    return Math.floor(date.getTime() / 1000);
 }
 
 /**
@@ -234,7 +236,7 @@ module.exports = {
     ids,
     colors,
     buttons,
-    getCurrentTimestamp,
+    getUnixTimestamp,
     hasRole,
     isAdmin,
     getMemberFullName,
