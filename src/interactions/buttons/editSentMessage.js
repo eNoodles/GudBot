@@ -1,5 +1,4 @@
 const { MessageActionRow, Modal, ButtonInteraction, TextInputComponent } = require('discord.js');
-const utils = require('../../utils');
 
 module.exports = {
     /**
