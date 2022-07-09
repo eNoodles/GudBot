@@ -1,6 +1,6 @@
 const { MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection } = require('discord.js');
 const { Op, jail_records, jailed_roles} = require('../database/dbObjects');
-const { ids, colors, buttons, getCurrentTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots } = require('../utils');
+const { ids, colors, buttons, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots } = require('../utils');
 
 /**
  * @type {Collection<string, JailData>} 
@@ -33,7 +33,7 @@ class JailData {
 async function jailMember(member, jailer_user, reason, duration, deleted_id) {
     const offender_id = member.id;
     const jailer_id = jailer_user.id;
-    const jail_timestamp = getCurrentTimestamp();
+    const jail_timestamp = getUnixTimestamp();
     const release_timestamp = duration ? jail_timestamp + duration : null;
 
     //get collection of member's roles, apart from base @@everyone role and jailed role
@@ -223,7 +223,7 @@ async function unjailMember(data, unjailer_user) {
     }
 
     //update time of release with current timestamp
-    const current_timestamp = getCurrentTimestamp();
+    const current_timestamp = getUnixTimestamp();
     //mark jail record as unjailed so it isn't checked next time
     record = await record.update({ unjailed: true, release_timestamp: current_timestamp });
 
@@ -274,7 +274,7 @@ async function updateDuration(data, duration, updater_user) {
     if (record.unjailed) throw 'Jail record already marked as unjailed!';
 
     //update time of release
-    const current_timestamp = getCurrentTimestamp();
+    const current_timestamp = getUnixTimestamp();
     const release_timestamp = current_timestamp + duration;
     record = await record.update({ release_timestamp: release_timestamp });
 
@@ -536,7 +536,7 @@ async function getJailDataByMessage(message_resolvable, guild) {
  * Checks jail_data_cache for members that need to be unjailed
  */
 function checkJailCache() {
-    const current_timestamp = getCurrentTimestamp();
+    const current_timestamp = getUnixTimestamp();
     //check for records that have not been marked as unjailed and whose release time has been passed
     jail_data_cache
         .filter(data => !data.record.unjailed && data.record.release_timestamp !== null && current_timestamp >= data.record.release_timestamp)
@@ -544,7 +544,7 @@ function checkJailCache() {
 }
 
 async function cacheJailData(guild) {
-    const current_timestamp = getCurrentTimestamp();
+    const current_timestamp = getUnixTimestamp();
     //fetch records no older than one day
     const records = await jail_records.findAll({
         where: {
@@ -575,7 +575,7 @@ function cacheDeletedMessage(message) {
 
 /**
  * @param {Message} message
- * @returns {MessageEmbed}
+ * @returns {Promise<MessageEmbed>}
  */
 async function createDeletedMessageEmbed(message) {
     let { content } = message;
