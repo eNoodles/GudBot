@@ -1,10 +1,12 @@
-const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection } = require("discord.js");
+const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection, Message } = require("discord.js");
 const { ids, colors, buttons, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots } = require("../utils");
 const { starboard } = require('../database/dbObjects');
 
 const star_count = 2;
 
 /**
+ * K: original_id
+ * V: Model instance
  * @type {Collection<string, Model>}
  */
 const starboard_cache = new Collection();
@@ -21,49 +23,73 @@ async function fetchStarboardEntry(original_id) {
 
     //otherwise fetch from db and cache
     entry = await starboard.findOne({ where: { original_id: original_id } });
-    starboard_cache.set(original_id, entry);
-    return entry;
+    if (entry) {
+        starboard_cache.set(original_id, entry);
+        return entry; 
+    }
+
+    //doesnt exist
+    return null;
+}
+
+let is_cache_uptodate = false;
+
+/**
+ * @param {boolean} top True if we want to sort by highest star count
+ * @param {number} from_timestamp Entry timestamps should be greater than this
+ * @param {number} entry ID of entry relative to which to get previous/next entry
+ * @param {boolean} next True if looking for next entry, false if looking for previous
+ */
+async function getRelativeStarboardEntry(top = false, from_timestamp = -1, entry_id = 0, next = true) {
+    //make sure cache has all entries from database
+    if (!is_cache_uptodate) {
+        const entries = await starboard.findAll();
+        if (entries?.length > 0) {
+            entries.forEach(entry => starboard_cache.set(entry.original_id, entry));
+            is_cache_uptodate = true;
+        }
+    }
+
+    //if cache is empty, there is nothing to find
+    if (starboard_cache.size === 0) return null;
+
+    //comparator function for sorting by highest star count
+    const sort_top = top ? (a,b) => b.count - a.count : () => 0;
+
+    //filter cache by time (only get entries after given timestamp), sort by star count or date, convert to array
+    const sorted = Array.from(starboard_cache
+        .filter(entry => entry.timestamp >= from_timestamp)
+        .sort((a,b) => sort_top(a,b) || b.timestamp - a.timestamp)
+        .values()
+    );
+
+    //find index of given entry among sorted array
+    let index = entry_id ? sorted.findIndex(entry => entry.id === entry_id) : -1;
+    //get index of next or previous entry
+    index += next ? 1 : -1;
+
+    //clamp index within array size
+    index = Math.min(Math.max(index, 0), sorted.length - 1);
+
+    //if entry isn't found, the index will either be 
+    //-1 - 1 = -2, which gets clamped to 0
+    //-1 + 1 = 0
+    //either way we get 0, the first element of the array
+
+    return {
+        entry: sorted[index], //next/previous entry
+        is_first: index === 0, //if entry is first (disable prev button)
+        is_last: index === sorted.length - 1 //if entry is last (disable next button)
+    };
 }
 
 /**
- * @param {MessageReaction} reaction 
- * @param {User} user 
+ * @param {Message} message Original starred message
+ * @param {number} count \# of star reactions
+ * @returns {Promise<MessageEmbed>}
  */
-async function updateStarboard(reaction, user) {
-    //original starred message
-    const { message, count } = reaction;
-    const { member, author } = message;
-
-    //no self starring
-    // if (user.id === author.id) {
-    //     await reaction.users.remove(user.id);
-    //     return;
-    // }
-
-    //fetch starboard channel
-    const star_ch = await message.guild.channels.fetch(ids.star_ch);
-    if (!star_ch) return;
-
-    //fetch starboard entry from cache or db
-    const starboard_entry = await fetchStarboardEntry(message.id);
-
-    //reaction count is less than minimum
-    if (count < star_count) {
-        //starboard entry exists, meaning it had enough stars before, but now a star has been removed
-        if (starboard_entry) {
-            //delete entry from db
-            await starboard_entry.destroy();
-            //delete from cache
-            starboard_cache.delete(message.id);
-            //fetch and delete the starboard message
-            const starboard_message = await star_ch.messages.fetch(starboard_entry.id);
-            await starboard_message.delete();
-        }
-        return;
-    }
-    //reaction is equal to or above minimum:
-    //format starboard message
-    let { content } = message;
+async function createStarboardEmbed(message, count) {
+    let { content, member, author } = message;
 
     const embed = new MessageEmbed()
         .setColor(member?.displayHexColor ?? colors.gray)
@@ -119,7 +145,47 @@ async function updateStarboard(reaction, user) {
     }
 
     //set finalized content as embed description
-    embed.setDescription(content);
+    return embed.setDescription(content);
+}
+
+/**
+ * @param {MessageReaction} reaction 
+ * @param {User} user 
+ */
+async function updateStarboard(reaction, user) {
+    //original starred message
+    const { message, count } = reaction;
+
+    //no self starring
+    // if (user.id === message.author.id) {
+    //     await reaction.users.remove(user.id);
+    //     return;
+    // }
+
+    //fetch starboard channel
+    const star_ch = await message.guild.channels.fetch(ids.star_ch);
+    if (!star_ch) return;
+
+    //fetch starboard entry from cache or db
+    const starboard_entry = await fetchStarboardEntry(message.id);
+
+    //reaction count is less than minimum
+    if (count < star_count) {
+        //starboard entry exists, meaning it had enough stars before, but now a star has been removed
+        if (starboard_entry) {
+            //delete entry from db
+            await starboard_entry.destroy();
+            //delete from cache
+            starboard_cache.delete(message.id);
+            //fetch and delete the starboard message
+            const starboard_message = await star_ch.messages.fetch(starboard_entry.id);
+            await starboard_message.delete();
+        }
+        return;
+    }
+    //reaction is equal to or above minimum:
+
+    const embed = await createStarboardEmbed(message, count);
 
     //update existing starboard entry
     if (starboard_entry) {
@@ -151,7 +217,7 @@ async function updateStarboard(reaction, user) {
             id: sent.id,
             original_id: message.id,
             channel_id: message.channel.id,
-            author_id: author.id,
+            author_id: message.author.id,
             count: count,
             timestamp: Math.floor(message.createdTimestamp / 1000), //convert ms to seconds
             url: message.url
@@ -166,5 +232,7 @@ async function updateStarboard(reaction, user) {
 }
 
 module.exports = {
+    getRelativeStarboardEntry,
+    createStarboardEmbed,
     updateStarboard
 }
