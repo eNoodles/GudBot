@@ -10,7 +10,8 @@ module.exports = {
 			interaction.isUserContextMenu() ? client.userContextMenus.get(commandName) :
 			interaction.isMessageContextMenu() ? client.messageContextMenus.get(commandName) :
 			interaction.isButton() ? client.buttons.get(customId.split('|')[0]) :
-			interaction.isModalSubmit() ? client.modals.get(customId.split('|')[0]) : false;
+			interaction.isModalSubmit() ? client.modals.get(customId.split('|')[0]) : 
+			interaction.isSelectMenu() ? client.selectMenus.get(customId.split('|')[0]) : false;
 
 		if (!response) return;
 		
