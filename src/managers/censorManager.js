@@ -37,7 +37,7 @@ const censored_authors_cache = new Collection();
 /**
  * Finds all blacklist table entries and regenerates blacklist_regexp
  */
-function generateBlacklistRegExp() {
+function generateBlacklist() {
     blacklist.findAll().then(entries => {
         const regexp_source = entries.map(e => e.word).join('|');
         blacklist_regexp = new RegExp(regexp_source, 'ig');
@@ -47,7 +47,7 @@ function generateBlacklistRegExp() {
 /**
  * @returns cached blacklist regular expression
  */
-function getBlacklistRegExp() {
+function getBlacklist() {
     return blacklist_regexp;
 }
 
@@ -226,8 +226,8 @@ async function censorMessage(message) {
 
 module.exports = {
     censored_authors_cache,
-    generateBlacklistRegExp,
-    getBlacklistRegExp,
+    generateBlacklist,
+    getBlacklist,
     generateWhitelists,
     checkWhitelists,
     censorMessage

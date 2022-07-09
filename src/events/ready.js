@@ -1,5 +1,5 @@
 const { cacheJailData, checkJailCache } = require('../managers/jailManager');
-const { generateBlacklistRegExp, generateWhitelists } = require('../managers/censorManager');
+const { generateBlacklist, generateWhitelists } = require('../managers/censorManager');
 const { ids } = require('../utils');
 
 module.exports = {
@@ -7,7 +7,7 @@ module.exports = {
 	async execute(client) {
 
 		//generate blacklist and whitelists for censorship manager
-		generateBlacklistRegExp();
+		generateBlacklist();
 		generateWhitelists();
 
 		//fetch and cache jail data from database for jail manager
