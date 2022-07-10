@@ -1,6 +1,7 @@
-const { MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection } = require('discord.js');
+const { ButtonStyle } = require('discord-api-types/v10');
+const { Client, MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection, TextChannel } = require('discord.js');
 const { Op, jail_records, jailed_roles} = require('../database/dbObjects');
-const { ids, colors, buttons, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots } = require('../utils');
+const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots } = require('../utils');
 
 /**
  * @type {Collection<string, JailData>} 
@@ -23,6 +24,27 @@ class JailData {
 }
 
 /**
+ * @type {TextChannel}
+ */
+let records_channel;
+
+/**
+ * Caches #criminal-records channel
+ * @param {Client} client 
+ */
+async function setRecordsChannel(client) {
+    records_channel = await client.channels.fetch(ids.records_ch);
+}
+
+/**
+ * Returns cached #criminal-records channel
+ * @returns {TextChannel}
+ */
+function getRecordsChannel() {
+    return records_channel;
+}
+
+/**
  * @param {GuildMember} member Member being jailed
  * @param {User} jailer_user User who initiated the interaction
  * @param {string} [reason] Reason for jailing (displayed in record)
@@ -34,7 +56,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
     const offender_id = member.id;
     const jailer_id = jailer_user.id;
     const jail_timestamp = getUnixTimestamp();
-    const release_timestamp = duration ? jail_timestamp + duration : null;
+    const release_timestamp = duration && duration > 0 ? jail_timestamp + duration : null;
 
     //get collection of member's roles, apart from base @@everyone role and jailed role
     const roles = member.roles.cache.filter(role => role.id !== ids.guild && role.id !== ids.jailed_role);
@@ -125,28 +147,27 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
         //create buttons for managing jail instance
         const unjail_button = new MessageButton()
             .setLabel('Unjail user')
-            .setStyle(buttons.green)
+            .setStyle(ButtonStyle.Success)
             .setCustomId(`recordsUnjail|${jail_record.id}`);
 
         const timer_button = new MessageButton()
             .setLabel('Set release time')
-            .setStyle(buttons.blurple)
+            .setStyle(ButtonStyle.Primary)
             .setCustomId(`recordsSetReleaseTime|${jail_record.id}`);
         
         const edit_button = new MessageButton()
             .setLabel('Edit reason')
-            .setStyle(buttons.gray)
+            .setStyle(ButtonStyle.Secondary)
             .setCustomId(`recordsEdit|${jail_record.id}`);
 
         const del_button = new MessageButton()
             .setLabel('\u200b Delete record  \u200b')
-            .setStyle(buttons.red)
+            .setStyle(ButtonStyle.Danger)
             .setCustomId(`recordsDelete|${jail_record.id}`)
             .setDisabled();
 
         //send generated jail message to #criminal-records
-        const channel = await member.guild.channels.fetch(ids.records_ch);
-        var records_msg = await channel.send({
+        var records_msg = await records_channel.send({
             embeds: embeds,
             components: [
                 new MessageActionRow().addComponents([unjail_button, timer_button]),
@@ -182,7 +203,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
 
         //if message was sent
         if (records_msg) {
-            records_msg.delete().catch(console.error);
+            records_msg.delete().catch(e => e.code === 10008 ? {} : console.error(e));
         }
 
         //the command handler should still handle the error
@@ -195,7 +216,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
  * @param {User} [unjailer_user] User who performed manual unjailing
  */
 async function unjailMember(data, unjailer_user) {
-    //deconstruct JailData object
+    
     let { record, role_entries, member, message } = data;
 
     //make sure user hasnt already been unjailed
@@ -264,14 +285,16 @@ async function unjailMember(data, unjailer_user) {
 /**
  * @param {JailData} data JailData Object
  * @param {number} duration Jail duration in seconds
- * @param {User} [updater_user] User who performed manual unjailing
  */
-async function updateDuration(data, duration, updater_user) {
-    //deconstruct JailData object
+async function updateDuration(data, duration) {
+    
     let { record, role_entries, member, message } = data;
 
     //make sure user hasnt already been unjailed
     if (record.unjailed) throw 'Jail record already marked as unjailed!';
+
+    //release time must be after jail time/current time
+    if (duration <= 0) throw 'Duration must be greater than 0!';
 
     //update time of release
     const current_timestamp = getUnixTimestamp();
@@ -299,10 +322,9 @@ async function updateDuration(data, duration, updater_user) {
 /**
  * @param {JailData} data JailData Object
  * @param {string} reason Jail duration in seconds
- * @param {User} [updater_user] User who performed manual unjailing
  */
-async function updateReason(data, reason, updater_user) {
-    //deconstruct JailData object
+async function updateReason(data, reason) {
+    
     let { record, role_entries, member, message } = data;
 
     //update time of release
@@ -328,10 +350,9 @@ async function updateReason(data, reason, updater_user) {
 
 /**
  * @param {JailData} data JailData Object
- * @param {User} [deleter_user] User who deleted record
  */
-async function deleteRecord(data, deleter_user) {
-    //deconstruct JailData object
+async function deleteRecord(data) {
+    
     let { record, role_entries, member, message } = data;
 
     console.log(`deleting record #${record.id}`);
@@ -340,7 +361,7 @@ async function deleteRecord(data, deleter_user) {
     await record.destroy().catch(console.error);
 
     //delete #criminal-records message
-    await message.delete().catch(console.error);
+    await message.delete().catch(e => e.code === 10008 ? {} : console.error(e));
 
     //remove data from cache
     jail_data_cache.delete(record.id);
@@ -349,10 +370,9 @@ async function deleteRecord(data, deleter_user) {
 /**
  * @param {JailData} data JailData Object
  * @param {string} deleted_message Message the "Delete & jail" context command was used on
- * @param {User} [updater_user] Context command user
  */
-async function addDeletedMessage(data, deleted_message, updater_user) {
-    //deconstruct JailData object
+async function addDeletedMessage(data, deleted_message) {
+    
     let { record, role_entries, member, message } = data;
 
     //add deleted message to embed array
@@ -401,10 +421,9 @@ function validateRecord(record) {
 /**
  * Gets relevant JailData from cache, or fetches it and adds to cache.
  * @param {Model|string} record_resolvable jail_records Model instance or ID
- * @param {Guild} guild Guild to fetch member from if necessary
  * @returns {Promise<false|JailData>}
  */
-async function getJailDataByRecord(record_resolvable, guild) {
+async function getJailDataByRecord(record_resolvable) {
     //check if an ID string was passed instead of an actual record Model instance
     const is_resolvable_id = typeof record_resolvable === 'string';
     //try to find ID in cache
@@ -420,15 +439,14 @@ async function getJailDataByRecord(record_resolvable, guild) {
         const record = is_resolvable_id ? await jail_records.findOne({ where: { id: record_resolvable } }) : record_resolvable;
         //make sure record is valid
         if (validateRecord(record)) {
-            //fetch guild member
-            const member = await guild.members.fetch(record.offender_id);
-            //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
-            const role_entries = member ? await jailed_roles.findAll({ where: { user_id: member.id } }) : [];
             //fetch message #criminal-records
-            const records_ch = await guild.channels.fetch(ids.records_ch);
             const regexp = record.url.match(/(\d+)$/);
             const message_id = regexp[1];
-            const message = await records_ch.messages.fetch(message_id);
+            const message = await records_channel.messages.fetch(message_id);
+            //fetch guild member
+            const member = await message?.guild.members.fetch(record.offender_id);
+            //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
+            const role_entries = member ? await jailed_roles.findAll({ where: { user_id: member.id } }) : [];
             //create new JailData
             const data = new JailData(record, role_entries, member, message);
             //cache it
@@ -447,7 +465,7 @@ async function getJailDataByRecord(record_resolvable, guild) {
  * @param {boolean} active If JailData should be marked as unjailed
  * @returns {Promise<false|JailData>}
  */
-async function getJailDataByMember(member, active=true) {
+async function getJailDataByMember(member, active = true) {
     //check cache for entry belonging to member
     const cached_data = jail_data_cache.find(data => 
         data.member.id === member.id && 
@@ -469,10 +487,9 @@ async function getJailDataByMember(member, active=true) {
             //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
             const role_entries = member ? await jailed_roles.findAll({ where: { user_id: member.id } }) : [];
             //fetch message from #criminal-records
-            const records_ch = await member.guild.channels.fetch(ids.records_ch);
             const regexp = record.url.match(/(\d+)$/);
             const message_id = regexp[1];
-            const message = await records_ch.messages.fetch(message_id);
+            const message = await records_channel.messages.fetch(message_id);
             //create new JailData
             const data = new JailData(record, role_entries, member, message);
             //cache it
@@ -511,13 +528,12 @@ async function getJailDataByMessage(message_resolvable, guild) {
             //fetch message from #criminal-records if url was given
             let message = message_resolvable;
             if (is_resolvable_url) {
-                const records_ch = await guild.channels.fetch(ids.records_ch);
                 const regexp = url.match(/(\d+)$/);
                 const message_id = regexp[1];
-                message = await records_ch.messages.fetch(message_id);
+                message = await records_channel.messages.fetch(message_id);
             }
-            //get guild member
-            const { member } = message;
+            //fetch guild member
+            const member = await message?.guild.members.fetch(record.offender_id);
             //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
             const role_entries = member ? await jailed_roles.findAll({ where: { user_id: member.id } }) : [];
             //create new JailData
@@ -543,6 +559,10 @@ function checkJailCache() {
         .forEach(data => unjailMember(data).catch(console.error));
 }
 
+/**
+ * Fetches jail records from the past 24 hours, creates JailData for them and caches it.
+ * @param {Guild} guild 
+ */
 async function cacheJailData(guild) {
     const current_timestamp = getUnixTimestamp();
     //fetch records no older than one day
@@ -552,7 +572,7 @@ async function cacheJailData(guild) {
         }
     });
     //create and cache jail data
-    records.forEach(record => getJailDataByRecord(record, guild).catch(console.error));
+    records.forEach(record => getJailDataByRecord(record).catch(console.error));
 }
 
 /**
@@ -636,6 +656,8 @@ async function createDeletedMessageEmbed(message) {
 }
 
 module.exports = {
+    setRecordsChannel,
+    getRecordsChannel,
     jailMember,
     unjailMember,
     updateDuration,
