@@ -9,10 +9,10 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const record_id = args[1];
-        const data = await getJailDataByRecord(record_id, interaction.guild);
+        const data = await getJailDataByRecord(record_id);
         
         if (!data) {
-            interaction.reply({
+            await interaction.reply({
                 embeds: [createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
                 ephemeral: true
             });
@@ -22,16 +22,15 @@ module.exports = {
 
         const reason = interaction.fields.getTextInputValue('jail_reason');
 
-        await updateReason(data, reason, interaction.user);
+        await updateReason(data, reason);
 
-        //send interaction reply confirming success
+        //send notification in #criminal-records
         const embed = new MessageEmbed()
-            .setDescription(`Updated reason for jailing <@${data.member.id}>`)
-            .setColor(colors.green);
+            .setDescription(`<@${interaction.user.id}> updated reason for jailing <@${data.member.id}>`)
+            .setColor(colors.gray);
 
         await interaction.reply({
-            embeds: [embed],
-            ephemeral: true
+            embeds: [embed]
         });
 	}
 };

@@ -121,7 +121,7 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setTitle('Censorship database updated')
                     .setDescription(`Added \`${entry.word}\` to blacklist.`)
-                    .setColor(colors.green);
+                    .setColor(colors.purple);
 
                 await interaction.reply({ embeds: [embed] });
 
@@ -142,8 +142,8 @@ module.exports = {
 
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
-                        .setDescription(`Successfully removed \`${word}\` from blacklist.`)
-                        .setColor(colors.green);
+                        .setDescription(`Removed \`${word}\` from blacklist.`)
+                        .setColor(colors.purple);
 
                     await interaction.reply({ embeds: [embed] });
                 }
@@ -172,6 +172,8 @@ module.exports = {
                         embeds: [createErrorEmbed(`Please mention a channel, user or role.`)],
                         ephemeral: true
                     });
+
+                    return;
                 }
 
                 const entry = await whitelist.create({
@@ -186,7 +188,7 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setTitle('Censorship database updated')
                     .setDescription(`Added <${entry.type}${entry.id}> to whitelist.`)
-                    .setColor(colors.green);
+                    .setColor(colors.purple);
 
                 await interaction.reply({ embeds: [embed] });
 
@@ -204,6 +206,8 @@ module.exports = {
                         embeds: [createErrorEmbed(`Please mention a channel, user or role.`)],
                         ephemeral: true
                     });
+
+                    return;
                 }
                 
                 //fetch entry whose id matches given mentionable
@@ -218,8 +222,8 @@ module.exports = {
 
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
-                        .setDescription(`Successfully removed ${regexp[0]} from whitelist.`)
-                        .setColor(colors.green);
+                        .setDescription(`Removed ${regexp[0]} from whitelist.`)
+                        .setColor(colors.purple);
 
                     await interaction.reply({ embeds: [embed] });
                 }
@@ -263,7 +267,7 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setTitle('Censorship database')
                     .setDescription(desc)
-                    .setColor(colors.green)
+                    .setColor(colors.purple)
                     .setFooter({ text: 'Use /censor commands to edit' });
 
                 await interaction.reply({

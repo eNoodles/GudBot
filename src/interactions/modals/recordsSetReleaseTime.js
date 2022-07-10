@@ -9,10 +9,10 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const record_id = args[1];
-        const data = await getJailDataByRecord(record_id, interaction.guild);
+        const data = await getJailDataByRecord(record_id);
         
         if (!data) {
-            interaction.reply({
+            await interaction.reply({
                 embeds: [createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
                 ephemeral: true
             });
@@ -20,24 +20,25 @@ module.exports = {
             return;
         }
 
+        //get jail duration minutes, hours, days (if text input value wasn't given, default to 0)
         const minutes = parseInt(interaction.fields.getTextInputValue('jail_minutes'), 10) || 0;
         const hours = parseInt(interaction.fields.getTextInputValue('jail_hours'), 10) || 0;
         const days = parseInt(interaction.fields.getTextInputValue('jail_days'), 10) || 0;
 
         const duration = getDurationSeconds(minutes, hours, days);
 
-        if (duration) {
+        //release time must be after jail time/current time
+        if (duration > 0) {
 
-            await updateDuration(data, duration, interaction.user);
+            await updateDuration(data, duration);
 
-            //send interaction reply confirming success
+            //send notification in #criminal-records
             const embed = new MessageEmbed()
-                .setDescription(`Updated release time of <@${data.member.id}>`)
-                .setColor(colors.green);
+                .setDescription(`<@${interaction.user.id}> updated release time of <@${data.member.id}>`)
+                .setColor(colors.gray);
 
             await interaction.reply({
-                embeds: [embed],
-                ephemeral: true
+                embeds: [embed]
             });
         }
         else {

@@ -9,10 +9,10 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const record_id = args[1];
-        const data = await getJailDataByRecord(record_id, interaction.guild);
+        const data = await getJailDataByRecord(record_id);
         
         if (!data) {
-            interaction.reply({
+            await interaction.reply({
                 embeds: [createErrorEmbed(`Jail record \`#${record_id}\` not found.`)],
                 ephemeral: true
             });
