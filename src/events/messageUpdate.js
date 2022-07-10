@@ -1,6 +1,12 @@
+const { Client, Message } = require('discord.js');
 const { getBlacklist, checkWhitelists } = require('../managers/censorManager');
 
 module.exports = {
+    /**
+     * @param {Client} client 
+     * @param {Message} old_message 
+     * @param {Message} new_message 
+     */
 	async execute(client, old_message, new_message) {
         if (new_message.author.bot) return;
 
