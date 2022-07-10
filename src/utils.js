@@ -48,14 +48,6 @@ const colors = {
     blurple: 7506394,
 };
 
-const buttons = {
-    blurple: 1, //PRIMARY
-    gray: 2,    //SECONDARY
-    green: 3,   //SUCCESS
-    red: 4,     //DANGER
-    link: 5,    //LINK
-};
-
 /**
  * @param {Date} [date] Date object to convert to unix timestamp. If not given, get current date.
  * @returns Get time in Unix system - seconds passed since 1/1/1970
@@ -127,10 +119,10 @@ function generateIntegerChoices(min=0, max=9) {
  * @param {number} minutes 
  * @param {number} hours 
  * @param {number} days 
- * @returns {number|null} Combined duration in seconds.
+ * @returns {number} Combined duration in seconds.
  */
 function getDurationSeconds(minutes, hours, days) {
-    return minutes || hours || days ? days * 86400 + hours * 3600 + minutes * 60 : null;
+    return minutes || hours || days ? days * 86400 + hours * 3600 + minutes * 60 : 0;
 }
 
 /**
@@ -235,7 +227,6 @@ function generateFileLinks(message) {
 module.exports = {
     ids,
     colors,
-    buttons,
     getUnixTimestamp,
     hasRole,
     isAdmin,
