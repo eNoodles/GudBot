@@ -1,4 +1,4 @@
-const { cacheJailData, checkJailCache } = require('../managers/jailManager');
+const { cacheJailData, checkJailCache, setRecordsChannel, getRecordsChannel } = require('../managers/jailManager');
 const { generateBlacklist, generateWhitelists } = require('../managers/censorManager');
 const { ids } = require('../utils');
 
@@ -10,8 +10,17 @@ module.exports = {
 		generateBlacklist();
 		generateWhitelists();
 
+		//cache #criminal-records in jailManager
+		await setRecordsChannel(client);
+
+		//fetch last 100 messages from #criminal-records
+		//this is in case an old records message is deleted, which would have otherwise been uncached
+		//this promise rejecting is non critical, catch it and keep going
+		getRecordsChannel().messages.fetch({ limit: 100, cache: true }).catch(console.error);
+
 		//fetch and cache jail data from database for jail manager
-		cacheJailData(await client.guilds.fetch(ids.guild));
+		const guild = await client.guilds.fetch(ids.guild);
+		cacheJailData(guild);
 
 		setInterval(() => {
 			try {
