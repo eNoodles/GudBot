@@ -1,6 +1,7 @@
+const { ButtonStyle } = require('discord-api-types/v10');
 const { ButtonInteraction, MessageButton, MessageActionRow, MessageSelectMenu  } = require('discord.js');
 const { getRelativeStarboardEntry, createStarboardEmbed } = require('../../managers/starboardManager');
-const { buttons, getUnixTimestamp, createErrorEmbed } = require('../../utils');
+const { getUnixTimestamp, createErrorEmbed } = require('../../utils');
 
 module.exports = {
     /**
@@ -59,7 +60,7 @@ module.exports = {
         //refresh button for retrying to fetch starboard entries
         const refresh_button = new MessageButton()
             .setEmoji('🔄')
-            .setStyle(buttons.blurple)
+            .setStyle(ButtonStyle.Primary)
             .setCustomId(`starboardRefresh`);
 
         //select menu for selecting sorting
@@ -136,20 +137,20 @@ module.exports = {
         //navigational buttons
         const prev_button = new MessageButton()
             .setEmoji('◀️')
-            .setStyle(buttons.blurple)
+            .setStyle(ButtonStyle.Primary)
             .setCustomId(`starboardNavigate|prev|${entry.id}`)
             .setDisabled(is_first);
 
         const next_button = new MessageButton()
             .setEmoji('▶️')
-            .setStyle(buttons.blurple)
+            .setStyle(ButtonStyle.Primary)
             .setCustomId(`starboardNavigate|next|${entry.id}`)
             .setDisabled(is_last);
 
         //url button to original message
         const link_button = new MessageButton()
             .setLabel('Open')
-            .setStyle(buttons.link)
+            .setStyle(ButtonStyle.Link)
             .setURL(entry.url);
         
         await interaction.update({

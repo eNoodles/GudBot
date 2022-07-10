@@ -1,6 +1,7 @@
+const { ButtonStyle } = require('discord-api-types/v10');
 const { SlashCommandBuilder } = require('@discordjs/builders');
-const { CommandInteraction, MessageButton, MessageActionRow } = require('discord.js');
-const { buttons } = require('../../utils');
+const { CommandInteraction, MessageButton, MessageActionRow, MessageEmbed } = require('discord.js');
+const { colors } = require('../../utils');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -17,13 +18,17 @@ module.exports = {
 	async execute(interaction) {
         const message = await interaction.channel.send({ content: interaction.options.getString('text') });
 
+        const embed = new MessageEmbed()
+            .setDescription('Message sent')
+            .setColor(colors.green);
+        
         const edit_button = new MessageButton()
             .setLabel('Edit')
-            .setStyle(buttons.gray)
+            .setStyle(ButtonStyle.Secondary)
             .setCustomId(`editSentMessage|${message.id}`);
 
         await interaction.reply({
-            content: 'Message sent',
+            embeds: [embed],
             components: [new MessageActionRow().addComponents([edit_button])],
             ephemeral: true
         });

@@ -1,8 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, MessageActionRow, CommandInteraction, MessageButton } = require('discord.js');
-const { PermissionFlagsBits } = require('discord-api-types/v10');
+const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
 const { jailMember } = require('../../managers/jailManager');
-const { generateIntegerChoices, ids, createErrorEmbed, isAdmin, getDurationSeconds, colors, buttons } = require('../../utils');
+const { generateIntegerChoices, ids, createErrorEmbed, isAdmin, getDurationSeconds, colors } = require('../../utils');
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -20,20 +20,20 @@ module.exports = {
         )
         .addIntegerOption(option => option
             .setName('minutes')
-            .setDescription('Minutes of jailtime before release.')
+            .setDescription('Release from jail in X minutes.')
             .setMinValue(1)
             .setMaxValue(60)
         )
         .addIntegerOption(option => option
             .setName('hours')
-            .setDescription('Hours of jailtime before release.')
+            .setDescription('Release from jail in X hours.')
             .setMinValue(1)
             .setMaxValue(24)
             .setChoices( ...generateIntegerChoices(1, 24) )
         )
         .addIntegerOption(option => option
             .setName('days')
-            .setDescription('Days of jailtime before release.')
+            .setDescription('Release from jail in X days.')
             .setMinValue(1)
             .setMaxValue(24)
             .setChoices( ...generateIntegerChoices(1, 24) )
@@ -77,7 +77,7 @@ module.exports = {
         
         const view_button = new MessageButton()
             .setLabel('View record')
-            .setStyle(buttons.link)
+            .setStyle(ButtonStyle.Link)
             .setURL(jail_message_url);
             
         await interaction.reply({

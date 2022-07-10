@@ -1,7 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { CommandInteraction, MessageButton, MessageActionRow, MessageSelectMenu } = require('discord.js');
-const { PermissionFlagsBits } = require('discord-api-types/v10');
-const { buttons, createErrorEmbed } = require('../../utils');
+const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
+const { createErrorEmbed } = require('../../utils');
 const { getRelativeStarboardEntry, createStarboardEmbed } = require('../../managers/starboardManager');
 
 module.exports = {
@@ -19,7 +19,7 @@ module.exports = {
         //refresh button for retrying to fetch starboard entries
         const refresh_button = new MessageButton()
             .setEmoji('🔄')
-            .setStyle(buttons.blurple)
+            .setStyle(ButtonStyle.Primary)
             .setCustomId(`starboardRefresh`);
 
         //invalid entry, most likely the cache is empty
@@ -58,20 +58,20 @@ module.exports = {
         //navigational buttons
         const prev_button = new MessageButton()
             .setEmoji('◀️')
-            .setStyle(buttons.blurple)
+            .setStyle(ButtonStyle.Primary)
             .setCustomId(`starboardNavigate|prev|${entry.id}`)
             .setDisabled(is_first);
 
         const next_button = new MessageButton()
             .setEmoji('▶️')
-            .setStyle(buttons.blurple)
+            .setStyle(ButtonStyle.Primary)
             .setCustomId(`starboardNavigate|next|${entry.id}`)
             .setDisabled(is_last);
 
         //url button to original message
         const link_button = new MessageButton()
             .setLabel('Open')
-            .setStyle(buttons.link)
+            .setStyle(ButtonStyle.Link)
             .setURL(entry.url);
 
         //select menu for selecting sorting

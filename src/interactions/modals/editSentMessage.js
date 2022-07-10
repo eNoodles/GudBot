@@ -1,5 +1,6 @@
-const { MessageButton, MessageActionRow, ModalSubmitInteraction } = require('discord.js');
-const { buttons } = require('../../utils');
+const { MessageButton, MessageActionRow, ModalSubmitInteraction, MessageEmbed } = require('discord.js');
+const { ButtonStyle } = require('discord-api-types/v10');
+const { colors } = require('../../utils');
 
 module.exports = {
     /**
@@ -9,18 +10,21 @@ module.exports = {
         const args = interaction.customId.split('|');
         const message_id = args[1];
 
-        const channel = await interaction.channel.fetch();
-        const message = await channel.messages.fetch(message_id);
+        const message = await interaction.channel.messages.fetch(message_id);
 
         await message.edit({ content: interaction.fields.getTextInputValue('new_content') });
 
+        const embed = new MessageEmbed()
+            .setDescription('Message edited')
+            .setColor(colors.blurple);
+
         const edit_button = new MessageButton()
             .setLabel('Edit')
-            .setStyle(buttons.gray)
+            .setStyle(ButtonStyle.Secondary)
             .setCustomId(`editSentMessage|${message.id}`);
 
         await interaction.update({
-            content: 'Message edited',
+            embeds: [embed],
             components: [new MessageActionRow().addComponents([edit_button])],
             ephemeral: true
         }); 

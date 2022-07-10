@@ -1,5 +1,6 @@
+const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection, Message } = require("discord.js");
-const { ids, colors, buttons, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots } = require("../utils");
+const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots } = require("../utils");
 const { starboard } = require('../database/dbObjects');
 
 const star_count = 2;
@@ -204,7 +205,7 @@ async function updateStarboard(reaction, user) {
         //create link to original message
         const link = new MessageButton()
             .setLabel('Open')
-            .setStyle(buttons.link)
+            .setStyle(ButtonStyle.Link)
             .setURL(message.url);
         //send new message in starboard channel
         const sent = await star_ch.send({ 
@@ -224,7 +225,7 @@ async function updateStarboard(reaction, user) {
         }).catch(e => {
             //in case something goes wrong, delete message from starboard channel
             console.error(e);
-            sent.delete().catch(console.error);
+            sent.delete().catch(e => e.code === 10008 ? {} : console.error(e));
         });
         //cache new starboard entry
         if (new_entry) starboard_cache.set(message.id, new_entry);

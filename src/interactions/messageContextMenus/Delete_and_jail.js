@@ -1,9 +1,9 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionRow, MessageEmbed, MessageButton } = require('discord.js');
-const { PermissionFlagsBits } = require('discord-api-types/v10');
+const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
 const { censored_authors_cache } = require('../../managers/censorManager');
 const { getJailDataByMember, addDeletedMessage } = require('../../managers/jailManager');
-const { createErrorEmbed, ids, colors, buttons, isAdmin } = require('../../utils');
+const { createErrorEmbed, ids, colors, isAdmin } = require('../../utils');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
@@ -75,7 +75,7 @@ module.exports = {
                 return;
             }
 
-            await addDeletedMessage(data, message, interaction.user);
+            await addDeletedMessage(data, message);
 
             //send interaction reply confirming success
             const embed = new MessageEmbed()
@@ -84,7 +84,7 @@ module.exports = {
             
             const view_button = new MessageButton()
                 .setLabel('View record')
-                .setStyle(buttons.link)
+                .setStyle(ButtonStyle.Link)
                 .setURL(data.message.url);
                 
             await interaction.reply({

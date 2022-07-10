@@ -1,6 +1,7 @@
+const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageEmbed, MessageButton, MessageActionRow, ModalSubmitInteraction } = require('discord.js');
 const { jailMember } = require('../../managers/jailManager');
-const { createErrorEmbed, ids, isAdmin, getDurationSeconds, colors, buttons } = require('../../utils');
+const { createErrorEmbed, ids, isAdmin, getDurationSeconds, colors } = require('../../utils');
 
 module.exports = {
     /**
@@ -39,12 +40,12 @@ module.exports = {
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()
-            .setDescription(`Deleted message and jailed <@${member.id}>`)
+            .setDescription(args[2] ? `Deleted message and jailed <@${member.id}>` : `Jailed <@${member.id}>`)
             .setColor(colors.green);
         
         const view_button = new MessageButton()
             .setLabel('View record')
-            .setStyle(buttons.link)
+            .setStyle(ButtonStyle.Link)
             .setURL(jail_message_url);
             
         await interaction.reply({
