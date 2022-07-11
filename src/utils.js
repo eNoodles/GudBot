@@ -1,5 +1,6 @@
 const { MessageEmbed, Message, GuildMember } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
+const Sleep = require('node:timers/promises').setTimeout;
 
 const ids = {
     client: '822565220190650379',
@@ -240,5 +241,6 @@ module.exports = {
     trimWhitespace,
     getGuildUploadLimit,
     prependFakeReply,
-    generateFileLinks
+    generateFileLinks,
+    Sleep
 }
