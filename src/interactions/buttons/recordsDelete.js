@@ -1,6 +1,6 @@
 const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageEmbed, MessageButton, ButtonInteraction, MessageActionRow } = require('discord.js');
-const { getJailDataByRecord, deleteRecord } = require('../../managers/jailManager');
+const { getJailDataByRecord } = require('../../managers/jailManager');
 const { createErrorEmbed, colors } = require('../../utils');
 
 module.exports = {
@@ -51,7 +51,7 @@ module.exports = {
             try {
                 if (i.customId === 'confirmRecordsDelete') {
 
-                    await deleteRecord(data); 
+                    await data.deleteRecord(); 
 
                     const embed = new MessageEmbed()
                         .setDescription(`<@${i.user.id}> deleted <@${data.member.id}>'s jail record from <t:${data.record.jail_timestamp}:f>`)
@@ -76,6 +76,6 @@ module.exports = {
         });
 
         //after button is clicked or collector expires, delete the prompt
-        collector.on('end', () => { interaction.deleteReply().catch(console.error) } );
+        collector.on('end', () => { interaction.deleteReply().catch(e => e.code === 10008 ? {} : console.error(e)) } );
 	}
 };

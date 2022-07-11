@@ -2,7 +2,7 @@ const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { UserContextMenuInteraction, MessageActionRow, MessageEmbed, MessageButton } = require('discord.js');
 const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
 const { createErrorEmbed, ids, colors } = require('../../utils');
-const { unjailMember, getRecordsChannel, getJailDataByMember } = require('../../managers/jailManager');
+const { getRecordsChannel, getJailDataByMember } = require('../../managers/jailManager');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
@@ -36,7 +36,7 @@ module.exports = {
             return;
         }
 
-        await unjailMember(data, interaction.user);
+        await data.unjailMember(interaction.user);
 
         //send notification in #criminal-records
         const embed = new MessageEmbed()

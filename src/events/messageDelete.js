@@ -1,6 +1,6 @@
 const { Client, Message, MessageEmbed } = require('discord.js');
 const { censored_authors_cache } = require('../managers/censorManager');
-const { cacheDeletedMessage, getJailDataByMessage, deleteRecord, unjailMember, getRecordsChannel } = require('../managers/jailManager');
+const { cacheDeletedMessage, getJailDataByMessage, getRecordsChannel } = require('../managers/jailManager');
 const { ids, colors } = require('../utils');
 
 module.exports = {
@@ -14,12 +14,6 @@ module.exports = {
             //check if JailData for this message exists
             const data = await getJailDataByMessage(message, message.guild);
             if (data) {
-                //make sure member is unjailed
-                if (!data.record.unjailed) await unjailMember(data).catch(console.error);
-
-                //delete jail record
-                await deleteRecord(data).catch(console.error);
-
                 //messageDelete doesn't emit executor data unfortunately, so we have to look it up in the audit log
                 const audit_logs = await message.guild.fetchAuditLogs({
                     type: 72, //MessageDelete
@@ -29,14 +23,23 @@ module.exports = {
                 //make sure we got the right one:
                 //message deleted mustve been sent by gudbot
                 //mustve been in #criminal-records
-                //current time and deletion time must be within 1000 milliseconds
+                //current time and deletion time must be within 1 second OR 5 minutes if count greater than 1 (merged deletion logs)
+                const current_time = new Date().getTime();
                 const message_delete_entry = audit_logs.entries.find(entry =>
                     entry.target.bot && 
                     entry.target.id === ids.client &&
-                    entry.extra.channel.id === ids.records_ch &&
-                    new Date().getTime() - entry.createdTimestamp < 1000
+                    entry.extra.channel.id === ids.records_ch && (
+                        current_time - entry.createdTimestamp <= 1000 || 
+                        entry.extra.count > 1 && current_time - entry.createdTimestamp <= 300000
+                    )
                 );
                 const deleter = message_delete_entry?.executor; // ?? message.author;
+
+                //make sure member is unjailed
+                if (!data.record.unjailed) await data.unjailMember(deleter).catch(console.error);
+
+                //delete jail record
+                await data.deleteRecord().catch(console.error);
 
                 //if deleter can be determined, send notification
                 if (deleter) {

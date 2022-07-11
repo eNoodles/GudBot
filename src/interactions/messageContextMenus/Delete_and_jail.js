@@ -2,7 +2,7 @@ const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionRow, MessageEmbed, MessageButton } = require('discord.js');
 const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
 const { censored_authors_cache } = require('../../managers/censorManager');
-const { getJailDataByMember, addDeletedMessage } = require('../../managers/jailManager');
+const { getJailDataByMember } = require('../../managers/jailManager');
 const { createErrorEmbed, ids, colors, isAdmin } = require('../../utils');
 
 module.exports = {
@@ -75,7 +75,7 @@ module.exports = {
                 return;
             }
 
-            await addDeletedMessage(data, message);
+            await data.addDeletedMessage(message);
 
             //send interaction reply confirming success
             const embed = new MessageEmbed()

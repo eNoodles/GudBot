@@ -1,5 +1,5 @@
 const { MessageEmbed, ModalSubmitInteraction } = require('discord.js');
-const { getJailDataByRecord, updateDuration } = require('../../managers/jailManager');
+const { getJailDataByRecord } = require('../../managers/jailManager');
 const { createErrorEmbed, getDurationSeconds, colors } = require('../../utils');
 
 module.exports = {
@@ -30,7 +30,7 @@ module.exports = {
         //release time must be after jail time/current time
         if (duration > 0) {
 
-            await updateDuration(data, duration);
+            await data.updateDuration(duration);
 
             //send notification in #criminal-records
             const embed = new MessageEmbed()

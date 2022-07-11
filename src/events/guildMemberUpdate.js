@@ -1,5 +1,5 @@
 const { Client, GuildMember, MessageEmbed } = require('discord.js');
-const { jailMember, getJailDataByMember, unjailMember, getRecordsChannel } = require('../managers/jailManager');
+const { jailMember, getJailDataByMember, getRecordsChannel } = require('../managers/jailManager');
 const { ids, isAdmin, colors } = require('../utils');
 
 module.exports = {
@@ -61,7 +61,7 @@ module.exports = {
             //only proceed if jailer can be determined
             //ignore if jailing was done by bot (to prevent recursion)
             if (jailer_user && !jailer_user.bot) {
-                await unjailMember(data);
+                await data.unjailMember(jailer_user);
 
                 //send notification in #criminal-records
                 const embed = new MessageEmbed()

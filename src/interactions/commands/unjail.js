@@ -1,7 +1,7 @@
 const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, CommandInteraction, MessageActionRow, MessageButton } = require('discord.js');
-const { unjailMember, getJailDataByMember, updateDuration, getRecordsChannel } = require('../../managers/jailManager');
+const { getJailDataByMember, getRecordsChannel } = require('../../managers/jailManager');
 const { createErrorEmbed, colors, generateIntegerChoices, ids, getDurationSeconds } = require('../../utils');
 
 module.exports = {
@@ -69,7 +69,7 @@ module.exports = {
         //if valid duration given, update release time
         if (duration > 0) {
 
-            await updateDuration(data, duration);
+            await data.updateDuration(duration);
 
             //send notification in #criminal-records
             const embed = new MessageEmbed()
@@ -102,7 +102,7 @@ module.exports = {
         }
         //otherwise, instantly unjail
         else {
-            await unjailMember(data, interaction.user);
+            await data.unjailMember(interaction.user);
 
             //send notification in #criminal-records
             const embed = new MessageEmbed()

@@ -1,5 +1,5 @@
 const { MessageEmbed, ModalSubmitInteraction } = require('discord.js');
-const { getJailDataByRecord, updateReason } = require('../../managers/jailManager');
+const { getJailDataByRecord } = require('../../managers/jailManager');
 const { createErrorEmbed, colors } = require('../../utils');
 
 module.exports = {
@@ -22,7 +22,7 @@ module.exports = {
 
         const reason = interaction.fields.getTextInputValue('jail_reason');
 
-        await updateReason(data, reason);
+        await data.updateReason(reason);
 
         //send notification in #criminal-records
         const embed = new MessageEmbed()

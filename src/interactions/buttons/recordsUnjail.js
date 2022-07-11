@@ -1,5 +1,5 @@
 const { MessageEmbed, ButtonInteraction } = require('discord.js');
-const { getJailDataByRecord, unjailMember } = require('../../managers/jailManager');
+const { getJailDataByRecord } = require('../../managers/jailManager');
 const { createErrorEmbed, colors } = require('../../utils');
 
 module.exports = {
@@ -20,7 +20,7 @@ module.exports = {
             return;
         }
 
-        await unjailMember(data, interaction.user);
+        await data.unjailMember(interaction.user);
 
         //send notification in #criminal-records
         const embed = new MessageEmbed()
