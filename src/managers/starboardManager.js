@@ -1,6 +1,6 @@
 const { ButtonStyle } = require('discord-api-types/v10');
-const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection, Message } = require("discord.js");
-const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots } = require("../utils");
+const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection, Message, MessageSelectMenu, CommandInteraction, ButtonInteraction, SelectMenuInteraction } = require("discord.js");
+const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots, getUnixTimestamp, createErrorEmbed } = require("../utils");
 const { starboard } = require('../database/dbObjects');
 
 const star_count = 2;
@@ -11,6 +11,9 @@ const star_count = 2;
  * @type {Collection<string, Model>}
  */
 const starboard_cache = new Collection();
+
+/**@type {boolean} Whether or not ALL entries from database have been cached*/
+let is_cache_uptodate = false;
 
 /**
  * Fetches starboard entry from local cache or database (caches it in the latter case)
@@ -31,57 +34,6 @@ async function fetchStarboardEntry(original_id) {
 
     //doesnt exist
     return null;
-}
-
-let is_cache_uptodate = false;
-
-/**
- * @param {boolean} top True if we want to sort by highest star count
- * @param {number} from_timestamp Entry timestamps should be greater than this
- * @param {number} entry ID of entry relative to which to get previous/next entry
- * @param {boolean} next True if looking for next entry, false if looking for previous
- */
-async function getRelativeStarboardEntry(top = false, from_timestamp = -1, entry_id = 0, next = true) {
-    //make sure cache has all entries from database
-    if (!is_cache_uptodate) {
-        const entries = await starboard.findAll();
-        if (entries?.length > 0) {
-            entries.forEach(entry => starboard_cache.set(entry.original_id, entry));
-            is_cache_uptodate = true;
-        }
-    }
-
-    //if cache is empty, there is nothing to find
-    if (starboard_cache.size === 0) return null;
-
-    //comparator function for sorting by highest star count
-    const sort_top = top ? (a,b) => b.count - a.count : () => 0;
-
-    //filter cache by time (only get entries after given timestamp), sort by star count or date, convert to array
-    const sorted = Array.from(starboard_cache
-        .filter(entry => entry.timestamp >= from_timestamp)
-        .sort((a,b) => sort_top(a,b) || b.timestamp - a.timestamp)
-        .values()
-    );
-
-    //find index of given entry among sorted array
-    let index = entry_id ? sorted.findIndex(entry => entry.id === entry_id) : -1;
-    //get index of next or previous entry
-    index += next ? 1 : -1;
-
-    //clamp index within array size
-    index = Math.min(Math.max(index, 0), sorted.length - 1);
-
-    //if entry isn't found, the index will either be 
-    //-1 - 1 = -2, which gets clamped to 0
-    //-1 + 1 = 0
-    //either way we get 0, the first element of the array
-
-    return {
-        entry: sorted[index], //next/previous entry
-        is_first: index === 0, //if entry is first (disable prev button)
-        is_last: index === sorted.length - 1 //if entry is last (disable next button)
-    };
 }
 
 /**
@@ -192,7 +144,7 @@ async function updateStarboard(reaction, user) {
     if (starboard_entry) {
         //fetch starboard message
         const starboard_message = await star_ch.messages.fetch(starboard_entry.id);
-        if (!message) return;
+        if (!starboard_message) return;
         //update message with edited embed
         await starboard_message.edit({ embeds: [embed] }).catch(console.error);
         //update star count in db
@@ -232,8 +184,231 @@ async function updateStarboard(reaction, user) {
     }
 }
 
+/**
+ * @param {string} [user_id] ID of user for which to filter starboard entries
+ * @param {string} [channel_id] ID of channel for which to filter starboard entries
+ * @param {string} selected_sort_value Select Menu's selected option value
+ * @param {number} entry ID of entry relative to which to get previous/next entry
+ * @param {boolean} next True if looking for next entry, false if looking for previous
+ */
+async function getNextEntry(user_id, channel_id, selected_sort_value, entry_id, next) {
+    //make sure cache has all entries from database
+    if (!is_cache_uptodate) {
+        const entries = await starboard.findAll();
+        if (entries?.length > 0) {
+            entries.forEach(entry => starboard_cache.set(entry.original_id, entry));
+            is_cache_uptodate = true;
+        }
+    }
+
+    //if cache is empty, there is nothing to find
+    if (starboard_cache.size === 0) return null;
+
+    //if should sort by star count
+    const top = selected_sort_value?.startsWith('top');
+
+    //entry timestamps should be greater than this
+    let starting_timestamp = -1;
+
+    //get starting timestamp if sorting by top
+    if (top) {
+        //current time
+        let date = new Date();
+
+        //get beginning of the day
+        date.setMilliseconds(0);
+        date.setSeconds(0);
+        date.setMinutes(0);
+        date.setHours(0);
+
+        switch (selected_sort_value) {
+            case 'top_year':
+                //get first day of current year
+                date.setMonth(0);
+                date.setDate(0);
+                //convert to unix
+                starting_timestamp = getUnixTimestamp(date);
+                break;
+            case 'top_month':
+                //get the first day of current month
+                date.setDate(0);
+                //convert to unix
+                starting_timestamp = getUnixTimestamp(date);
+                break;
+            case 'top_week':
+                //get the first day of current week
+                const current_date = date.getDate();
+                const current_day = date.getDay() || 7; //convert 0 (sunday) to 7
+                date.setDate(current_date - current_day + 1);
+                //convert to unix
+                starting_timestamp = getUnixTimestamp(date);
+        }
+    }
+
+    //comparator function for sorting by highest star count
+    const sort_top = top ? (a,b) => b.count - a.count : () => 0;
+
+    //filter and sort cache, convert to array
+    const sorted = Array.from(starboard_cache
+        .filter(entry => 
+            //only get entries after given timestamp
+            entry.timestamp >= starting_timestamp &&
+            //if user_id is given, only get entries with matching author_id
+            (!user_id || entry.author_id === user_id) &&
+            //if channel_id is given, only get entries with matching channel_id
+            (!channel_id || entry.channel_id === channel_id)
+        )
+        //prioritize sorting by star count (IF top is true), if star count is equal or irrelevant- sort by newest
+        .sort((a,b) => sort_top(a,b) || b.timestamp - a.timestamp)
+        .values()
+    );
+
+    //find index of given entry among sorted array
+    let index = entry_id ? sorted.findIndex(entry => entry.id === entry_id) : -1;
+    //get index of next or previous entry
+    index += next ? 1 : -1;
+
+    //clamp index within array size
+    index = Math.min(Math.max(index, 0), sorted.length - 1);
+
+    //if entry isn't found, the index will either be 
+    //-1 - 1 = -2, which gets clamped to 0
+    //-1 + 1 = 0
+    //either way we get 0, the first element of the array
+
+    return {
+        entry: sorted[index], //next/previous entry
+        is_first: index === 0, //if entry is first (disable prev button)
+        is_last: index === sorted.length - 1 //if entry is last (disable next button)
+    };
+}
+
+/**
+ * @param {CommandInteraction|ButtonInteraction|SelectMenuInteraction} interaction 
+ * @param {{ user_id: string; channel_id: string; selected_sort_value: string; entry_id: number; next: boolean; }} starboard_options
+ */
+async function updateStarboardViewer(interaction, starboard_options = {}) {
+    const { user_id, channel_id } = starboard_options;
+    const selected_sort_value = starboard_options.selected_sort_value ?? 'newest';
+    const entry_id = starboard_options.entry_id ?? 0;
+    const next = starboard_options.next ?? true;
+
+    //reply to command (initial use), update if clicked button or select menu
+    const replyOrUpdate = interaction.isCommand() ? 
+        (...args) => interaction.reply(...args) : 
+        (...args) => interaction.update(...args);
+
+    //get first starboard entry
+    const { entry, is_first, is_last } = await getNextEntry(user_id, channel_id, selected_sort_value, entry_id, next);
+
+    //refresh button for retrying to fetch starboard entries
+    const refresh_button = new MessageButton()
+        .setEmoji('🔄')
+        .setStyle(ButtonStyle.Primary)
+        .setCustomId(`starboardRefresh`);
+
+    //select menu for sorting options
+    const sort_select = new MessageSelectMenu()
+        .setCustomId(`starboardSort|${user_id ?? ''}|${channel_id ?? ''}`)
+        .addOptions([
+            {
+                label: 'Newest',
+                value: 'newest'
+            },
+            {
+                label: 'Top of all time',
+                value: 'top_all_time'
+            },
+            {
+                label: 'Top this year',
+                value: 'top_year',
+            },
+            {
+                label: 'Top this month',
+                value: 'top_month',
+            },
+            {
+                label: 'Top this week',
+                value: 'top_week',
+            },
+        ].map(option => {
+            //set selected value as default option
+            option.default = option.value === selected_sort_value;
+            return option;
+        }));
+
+    //invalid entry, most likely the cache is empty
+    if (!entry) {
+        await replyOrUpdate({
+            embeds: [createErrorEmbed('No starboard entry found.')],
+            components: [
+                new MessageActionRow().addComponents([sort_select]),
+                new MessageActionRow().addComponents([refresh_button])
+            ],
+            ephemeral: true
+        });
+        return;
+    }
+
+    //fetch channel where starred message was sent
+    const channel = await interaction.guild.channels.fetch(entry.channel_id);
+    if (!channel) {
+        await replyOrUpdate({
+            embeds: [createErrorEmbed(`Failed to fetch channel <#${entry.channel_id}>`)],
+            components: [
+                new MessageActionRow().addComponents([sort_select]),
+                new MessageActionRow().addComponents([refresh_button])
+            ],
+            ephemeral: true
+        });
+        return;
+    }
+    //fetch original starred message
+    const message = await channel.messages.fetch(entry.original_id);
+    if (!message) {
+        await replyOrUpdate({
+            embeds: [createErrorEmbed(`Failed to fetch message \`#${entry.original_id}\``)],
+            components: [
+                new MessageActionRow().addComponents([sort_select]),
+                new MessageActionRow().addComponents([refresh_button])
+            ],
+            ephemeral: true
+        });
+        return;
+    }
+
+    const embed = await createStarboardEmbed(message, entry.count);
+
+    //navigational buttons
+    const prev_button = new MessageButton()
+        .setEmoji('◀️')
+        .setStyle(ButtonStyle.Primary)
+        .setCustomId(`starboardNavigate|prev|${entry.id}`)
+        .setDisabled(is_first);
+
+    const next_button = new MessageButton()
+        .setEmoji('▶️')
+        .setStyle(ButtonStyle.Primary)
+        .setCustomId(`starboardNavigate|next|${entry.id}`)
+        .setDisabled(is_last);
+
+    //url button to original message
+    const link_button = new MessageButton()
+        .setLabel('Open')
+        .setStyle(ButtonStyle.Link)
+        .setURL(entry.url);
+
+    await replyOrUpdate({
+        embeds: [embed],
+        components: [
+            new MessageActionRow().addComponents([sort_select]),
+            new MessageActionRow().addComponents([prev_button, next_button, link_button])
+        ],
+        ephemeral: true
+    });
+}
+
 module.exports = {
-    getRelativeStarboardEntry,
-    createStarboardEmbed,
-    updateStarboard
+    updateStarboard,
+    updateStarboardViewer
 }
