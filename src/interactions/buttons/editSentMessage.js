@@ -8,8 +8,7 @@ module.exports = {
         const args = interaction.customId.split('|');
         const message_id = args[1];
 
-        const channel = await interaction.channel.fetch();
-        const message = await channel.messages.fetch(message_id);
+        const message = await interaction.channel.messages.fetch(message_id);
 
         const new_content = new TextInputComponent()
             .setCustomId('new_content')
