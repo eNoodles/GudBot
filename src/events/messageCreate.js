@@ -1,5 +1,6 @@
 const { Client, Message } = require('discord.js');
 const { censorMessage } = require('../managers/censorManager');
+const { addToMessageGroups } = require('../managers/spamManager');
 
 module.exports = {
     /**
@@ -8,7 +9,8 @@ module.exports = {
      */
     async execute(client, message) {
         if (message.author.bot) return;
+        if (await censorMessage(message)) return;
 
-        censorMessage(message);
+        await addToMessageGroups(message);
     }
 };
