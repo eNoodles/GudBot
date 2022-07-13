@@ -116,6 +116,86 @@ async function fetchOrCreateHook(channel) {
 }
 
 /**
+ * @param {string} content 
+ * @returns {string|null} Censored message content or null if censorship was unnecessary
+ */
+function parseContent(content) {
+    //let star_count = 0;
+    let modified = false;
+
+    const removed_whitespace = [];
+    let discarded_count = 0;
+
+    //remove whitespace and zero-width chars
+    content = content.replace(/(\s+)|(?:[\u200b-\u200f]|[\u2060-\u2064]|[\u206a-\u206f]|[\u17b4-\u17b5]|\u00ad|\u034f|\u061c|\u180e)+/g, (match, space, offset) => {
+        //if matched text was whitespace, save it for reinsertion later
+        if (space) {
+            removed_whitespace.push({
+                whitespace: match,
+                index: offset - discarded_count
+            });
+        }
+        //zero width characters will be discarded, so we have to keep track of how many chars were removed to adjust saved whitespace indexes
+        else discarded_count += match.length;
+
+        //remove
+        return '';
+    });
+
+    //replace blacklisted words with stars
+    let censored = content.replace(blacklist_regexp, (word, index) => {
+        //find nearest space before the word
+        const space_index = content.lastIndexOf(' ', index);
+        //get all the non-whitespace stuff to the left of word
+        const left_of_word = content.substring(space_index + 1, index);
+
+        //dont replace word if the match is part of a link or emoji
+        if (left_of_word.includes('http') || left_of_word.includes('<:') && !left_of_word.includes('>')) return word;
+
+        //get the first char of the word
+        let censored_word = word[0];
+
+        //for every char after the first, add one star
+        for (let i = 1; i < word.length; i++) { 
+            censored_word += '⋆'; // '\\*';
+            
+            //count total amount of stars inserted into message
+            //also used to determine adjusted max_length later
+            //star_count++;
+
+            modified = true;
+        }
+
+        //replace
+        return censored_word;
+    });
+
+    //no stars inserted => no censhorship was done
+    //if (star_count === 0) return false;
+
+    //if content was not modified, meaning no censorship was necessary => do not proceed further
+    if (!modified) return null;
+
+    //reinsert whitespace
+    discarded_count = 0;
+    removed_whitespace.forEach(e => {
+        //adjust whitespace's index based on how many prior spaces were discarded
+        const index = e.index - discarded_count;
+
+        const space = e.whitespace;
+
+        //if the next char is a star, do not reinsert space, but keep track of how many spaces were discarded
+        if (censored[index] === '⋆')
+            discarded_count += space.length;
+        //reinsert
+        else censored = censored.substring(0, index) + space + censored.substring(index);
+    });
+
+    //return the successfully censored content
+    return censored;
+}
+
+/**
  * Detects blacklisted words in message content, censors them and resends the message with a webhook so as to mimic original author's name and avatar.
  * @param {Message} message 
  * @returns {Promise<boolean>} Whether or not message was censored.
@@ -129,42 +209,20 @@ async function censorMessage(message) {
     //we do this on every messageCreate, not just the ones that need to be censored, so as to populate the cache
     const hook = await fetchOrCreateHook(channel);
 
+    //don't do anything if content is empty
+    if (!message.content) return false;
+
     //don't do anything if regexp is empty
     if (blacklist_regexp.source === '(?:)') return false;
 
     //dont censor message if sent in whitelisted channel or by whitelisted user
     if (checkWhitelists(message)) return false;
 
-    //find blacklisted words in message content and censor them
-    const content = message.content;
+    //find blacklisted words in message content and censor if necessary
+    let censored = parseContent(message.content);
 
-    //let star_count = 0;
-    let modified = false;
-
-    let censored = content.replace(blacklist_regexp, (word, index) => {
-        const space_index = content.lastIndexOf(' ', index); //nearest space to word on the left
-        const left_of_word = content.substring(space_index + 1, index); //all the stuff to the left of word (non whitespace)
-
-        //dont replace if the match is part of a link or emoji
-        if (left_of_word.includes('http') || left_of_word.includes('<:') && !left_of_word.includes('>')) return word;
-
-        let censored_word = word[0]; //first char of bad word
-        for (let i = 1; i < word.length; i++) { 
-            //for every char after the first, add one star
-            censored_word += '⋆'; // '\\*';
-            
-            //count total amount of stars inserted into message
-            //also used to determine adjusted max_length later
-            //star_count++;
-            modified = true;
-        }
-
-        return censored_word;
-    });
-
-    //no stars inserted => no censhorship was done
-    //if (star_count === 0) return false;
-    if (!modified) return false;
+    //if no blacklisted words found, do not proceed further
+    if (!censored) return false;
 
     //prepend fake reply to beginning of censored message content
     if (message.type === 'REPLY') {
