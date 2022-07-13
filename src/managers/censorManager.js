@@ -94,7 +94,7 @@ function checkWhitelists(message) {
 
 /**
  * @param {TextChannel} channel
- * @returns {Webhook} Fetched or newly created GudBot-owned webhook
+ * @returns {Promise<Webhook>} Fetched or newly created GudBot-owned webhook
  */
 async function fetchOrCreateHook(channel) {
     //first check local cache
@@ -118,6 +118,7 @@ async function fetchOrCreateHook(channel) {
 /**
  * Detects blacklisted words in message content, censors them and resends the message with a webhook so as to mimic original author's name and avatar.
  * @param {Message} message 
+ * @returns {Promise<boolean>} Whether or not message was censored.
  */
 async function censorMessage(message) {
     //threads dont have webhooks, so in that case we get the parent channel
@@ -129,10 +130,10 @@ async function censorMessage(message) {
     const hook = await fetchOrCreateHook(channel);
 
     //don't do anything if regexp is empty
-    if (blacklist_regexp.source === '(?:)') return;
+    if (blacklist_regexp.source === '(?:)') return false;
 
     //dont censor message if sent in whitelisted channel or by whitelisted user
-    if (checkWhitelists(message)) return;
+    if (checkWhitelists(message)) return false;
 
     //find blacklisted words in message content and censor them
     const content = message.content;
@@ -162,8 +163,8 @@ async function censorMessage(message) {
     });
 
     //no stars inserted => no censhorship was done
-    //if (star_count === 0) return;
-    if (!modified) return;
+    //if (star_count === 0) return false;
+    if (!modified) return false;
 
     //prepend fake reply to beginning of censored message content
     if (message.type === 'REPLY') {
@@ -222,6 +223,8 @@ async function censorMessage(message) {
         const new_msg = await hook.send(message_options);
         cacheAuthorId(new_msg.id, message.author.id);
     }
+
+    return true;
 }
 
 module.exports = {
@@ -231,4 +234,4 @@ module.exports = {
     generateWhitelists,
     checkWhitelists,
     censorMessage
-}
+};
