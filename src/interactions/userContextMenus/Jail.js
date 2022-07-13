@@ -16,7 +16,7 @@ module.exports = {
         const member = interaction.targetMember;
 
         //no jail overrides
-        if (member.roles.cache.has(ids.jailed_role)) {
+        if (member.roles.cache.has(ids.roles.jailed)) {
             await interaction.reply({
                 embeds: [createErrorEmbed(`<@${member.id}> is already jailed.`)], 
                 ephemeral: true

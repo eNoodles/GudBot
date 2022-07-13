@@ -1,8 +1,8 @@
 const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, CommandInteraction, MessageActionRow, MessageButton } = require('discord.js');
-const { getJailDataByMember, getRecordsChannel } = require('../../managers/jailManager');
-const { createErrorEmbed, colors, generateIntegerChoices, ids, getDurationSeconds } = require('../../utils');
+const { getJailDataByMember } = require('../../managers/jailManager');
+const { createErrorEmbed, colors, generateIntegerChoices, ids, getDurationSeconds, fetchCachedChannel } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -40,7 +40,7 @@ module.exports = {
 	async execute(interaction) {
         const member = interaction.options.getMember('user');
         //make sure member is currently jailed
-        if (!member.roles.cache.has(ids.jailed_role)) {
+        if (!member.roles.cache.has(ids.roles.jailed)) {
             await interaction.reply({
                 embeds: [createErrorEmbed(`<@${member.id}> is not currently jailed.`)],
                 ephemeral: true
@@ -53,7 +53,7 @@ module.exports = {
         const data = await getJailDataByMember(member);
         if (!data) {
             await interaction.reply({
-                embeds: [createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${ids.jailed_role}> role, but a corresponding record was not found.`)],
+                embeds: [createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${ids.roles.jailed}> role, but a corresponding record was not found.`)],
                 ephemeral: true
             });
 
@@ -76,7 +76,7 @@ module.exports = {
                 .setDescription(`<@${interaction.user.id}> updated release time of <@${member.id}>`)
                 .setColor(colors.gray);
 
-            await getRecordsChannel().send({
+            await fetchCachedChannel(ids.channels.records).send({
                 reply: {
                     messageReference: data.message,
                     failIfNotExists: false
@@ -109,7 +109,7 @@ module.exports = {
                 .setDescription(`<@${interaction.user.id}> unjailed <@${member.id}>`)
                 .setColor(colors.green);
 
-            await getRecordsChannel().send({
+            await fetchCachedChannel(ids.channels.records).send({
                 reply: {
                     messageReference: data.message,
                     failIfNotExists: false

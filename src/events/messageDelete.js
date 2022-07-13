@@ -1,7 +1,7 @@
 const { Client, Message, MessageEmbed } = require('discord.js');
 const { censored_authors_cache } = require('../managers/censorManager');
-const { cacheDeletedMessage, getJailDataByMessage, getRecordsChannel } = require('../managers/jailManager');
-const { ids, colors } = require('../utils');
+const { cacheDeletedMessage, getJailDataByMessage } = require('../managers/jailManager');
+const { ids, colors, fetchCachedChannel } = require('../utils');
 
 module.exports = {
     /**
@@ -10,7 +10,7 @@ module.exports = {
      */
 	async execute(client, message) {
         //potential jail record deletion by user
-        if (message.author?.bot && message.channelId === ids.records_ch) {
+        if (message.author?.bot && message.channelId === ids.channels.records) {
             //check if JailData for this message exists
             const data = await getJailDataByMessage(message, message.guild);
             if (data) {
@@ -28,7 +28,7 @@ module.exports = {
                 const message_delete_entry = audit_logs.entries.find(entry =>
                     entry.target.bot && 
                     entry.target.id === ids.client &&
-                    entry.extra.channel.id === ids.records_ch && (
+                    entry.extra.channel.id === ids.channels.records && (
                         current_time - entry.createdTimestamp <= 1000 || 
                         entry.extra.count > 1 && current_time - entry.createdTimestamp <= 300000
                     )
@@ -47,7 +47,7 @@ module.exports = {
                         .setDescription(`<@${deleter.id}> deleted <@${data.member.id}>'s jail record from <t:${data.record.jail_timestamp}:f>`)
                         .setColor(colors.red);
 
-                    await getRecordsChannel().send({ embeds: [embed] });
+                    await fetchCachedChannel(ids.channels.records).send({ embeds: [embed] });
                 }
 
                 //no need to cache this message

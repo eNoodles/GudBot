@@ -46,7 +46,7 @@ module.exports = {
         const member = interaction.options.getMember('user');
 
         //no jail overrides
-        if (member.roles.cache.has(ids.jailed_role)) {
+        if (member.roles.cache.has(ids.roles.jailed)) {
             await interaction.reply({
                 embeds: [createErrorEmbed(`<@${member.id}> is already jailed.`)], 
                 ephemeral: true
@@ -68,7 +68,12 @@ module.exports = {
 
         const duration = getDurationSeconds(minutes, hours, days);
 
-        const jail_message_url = await jailMember(member, interaction.user, reason, duration);
+        const jail_message_url = await jailMember(
+            member, 
+            interaction.user, 
+            reason, 
+            duration
+        );
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()

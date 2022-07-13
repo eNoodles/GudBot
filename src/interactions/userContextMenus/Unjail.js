@@ -1,8 +1,8 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { UserContextMenuInteraction, MessageActionRow, MessageEmbed, MessageButton } = require('discord.js');
 const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
-const { createErrorEmbed, ids, colors } = require('../../utils');
-const { getRecordsChannel, getJailDataByMember } = require('../../managers/jailManager');
+const { createErrorEmbed, ids, colors, fetchCachedChannel } = require('../../utils');
+const { getJailDataByMember } = require('../../managers/jailManager');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
@@ -16,7 +16,7 @@ module.exports = {
     async execute(interaction) {
         const member = interaction.targetMember;
         //make sure member is currently jailed
-        if (!member.roles.cache.has(ids.jailed_role)) {
+        if (!member.roles.cache.has(ids.roles.jailed)) {
             await interaction.reply({
                 embeds: [createErrorEmbed(`<@${member.id}> is not currently jailed.`)],
                 ephemeral: true
@@ -29,7 +29,7 @@ module.exports = {
         const data = await getJailDataByMember(member);
         if (!data) {
             await interaction.reply({
-                embeds: [createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${ids.jailed_role}> role, but a corresponding record was not found.`)],
+                embeds: [createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${ids.roles.jailed}> role, but a corresponding record was not found.`)],
                 ephemeral: true
             });
 
@@ -43,7 +43,7 @@ module.exports = {
             .setDescription(`<@${interaction.user.id}> unjailed <@${member.id}>`)
             .setColor(colors.green);
 
-        await getRecordsChannel().send({
+        await fetchCachedChannel(ids.channels.records).send({
             reply: {
                 messageReference: data.message,
                 failIfNotExists: false

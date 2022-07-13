@@ -12,7 +12,7 @@ module.exports = {
         const member = await interaction.guild.members.fetch(args[1]);
 
         //no jail overrides
-        if (member.roles.cache.has(ids.jailed_role)) {
+        if (member.roles.cache.has(ids.roles.jailed)) {
             await interaction.reply({
                 embeds: [createErrorEmbed(`<@${member.id}> is already jailed.`)], 
                 ephemeral: true
@@ -36,7 +36,12 @@ module.exports = {
 
         //jail member and get url of #criminal-records message
         //arg[2] is message id
-        const jail_message_url = await jailMember(member, interaction.user, reason, duration, args[2] ?? null);
+        const jail_message_url = await jailMember(
+            member, 
+            interaction.user, 
+            reason, duration, 
+            args[2] ?? null
+        );
 
         //send interaction reply confirming success
         const embed = new MessageEmbed()

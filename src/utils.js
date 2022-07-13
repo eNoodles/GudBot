@@ -1,4 +1,4 @@
-const { MessageEmbed, Message, GuildMember } = require('discord.js');
+const { MessageEmbed, Message, GuildMember, Collection, TextChannel, Client } = require('discord.js');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
 const Sleep = require('node:timers/promises').setTimeout;
 
@@ -6,19 +6,18 @@ const ids = {
     client: '822565220190650379',
     guild: '822148574032298064',
 
-    intro_ch: '883882213714837514',
-    rules_ch: '552982479212904448',
-    dl_ch: '486202559951011870',
-    dldb_ch: '607310581053128717',
-    mod_ch: '860181373468540948',
-    star_ch: '993917733265756211',
-    records_ch: '986712503935447130',
+    channels: {
+        admin: '978666603677896764',
+        starboard: '993917733265756211',
+        records: '986712503935447130'
+    },
 
-    lurker_role: '523883593978609704',
-    gmteam_role: '409531885119864832',
-    jailed_role: '865603749393334283',
-    muted_role: '606870055770390538',
-    blankicon_role: '894731175216701450',
+    roles: {
+        lurker: '523883593978609704',
+        gmteam: '409531885119864832',
+        jailed: '865603749393334283',
+        blankicon: '894731175216701450'
+    }
 };
 
 // GudMods
@@ -26,19 +25,18 @@ const ids = {
 //     client: '822565220190650379',
 //     guild: '364164445657890816',
 
-//     intro_ch: '883882213714837514',
-//     rules_ch: '552982479212904448',
-//     dl_ch: '486202559951011870',
-//     dldb_ch: '607310581053128717',
-//     mod_ch: '860181373468540948',
-//     star_ch: '888515334015942676',
-//     records_ch: '746696906314612807',
+//     channels: {
+//         admin: '860181373468540948',
+//         starboard: '888515334015942676',
+//         records: '746696906314612807'
+//     },
 
-//     lurker_role: '523883593978609704',
-//     gmteam_role: '409531885119864832',
-//     jailed_role: '603983150011514979',
-//     muted_role: '606870055770390538',
-//     blankicon_role: '894731175216701450',
+//     roles: {
+//         lurker: '523883593978609704',
+//         gmteam: '409531885119864832',
+//         jailed: '603983150011514979',
+//         blankicon: '894731175216701450'
+//     }
 // };
 
 const colors = {
@@ -47,7 +45,32 @@ const colors = {
     gray: 10066329,
     purple: 10434242,
     blurple: 7506394,
+    nitro: 16741370,
+    black: 0
 };
+
+/**@type {Collection<string,TextChannel>} */
+const channels_cache = new Collection();
+
+/**
+ * @param {Client} client 
+ */
+async function cacheChannels(client) {
+    for (const prop in ids.channels) {
+        const id = ids.channels[prop];
+        const channel = await client.channels.fetch(id).catch(console.error);
+        if (channel)
+            channels_cache.set(id, channel);
+    }
+}
+ 
+/**
+ * @param {string} id channel ID
+ * @returns {TextChannel} cached channel
+ */
+function fetchCachedChannel(id) {
+    return channels_cache.get(id);
+}
 
 /**
  * @param {Date} [date] Date object to convert to unix timestamp. If not given, get current date.
@@ -56,6 +79,14 @@ const colors = {
 function getUnixTimestamp(date) {
     date = date ?? new Date();
     return Math.floor(date.getTime() / 1000);
+}
+
+/**
+ * Log error unless code is 10008 (DiscordAPIError: Unknown Message)
+ * @param {Error} e 
+ */
+function logUnlessUnknown(e) {
+    if (e.code !== 10008) console.error(e);
 }
 
 /**
@@ -228,7 +259,10 @@ function generateFileLinks(message) {
 module.exports = {
     ids,
     colors,
+    cacheChannels,
+    fetchCachedChannel,
     getUnixTimestamp,
+    logUnlessUnknown,
     hasRole,
     isAdmin,
     getMemberFullName,
@@ -243,4 +277,4 @@ module.exports = {
     prependFakeReply,
     generateFileLinks,
     Sleep
-}
+};

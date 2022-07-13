@@ -64,12 +64,12 @@ module.exports = {
         }
 
         //attach message to existing record if member is already jailed, otherwise continue with jailing procedure
-        if (member.roles.cache.has(ids.jailed_role)) {
+        if (member.roles.cache.has(ids.roles.jailed)) {
             const data = await getJailDataByMember(member);
 
             if (!data) {
                 await interaction.reply({
-                    embeds: [createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${ids.jailed_role}> role, but a corresponding record was not found.`)], 
+                    embeds: [createErrorEmbed(`Something has gone wrong, <@${member.id}> has the <#${ids.roles.jailed}> role, but a corresponding record was not found.`)], 
                     ephemeral: true
                 });
                 return;

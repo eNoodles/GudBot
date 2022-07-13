@@ -1,6 +1,6 @@
 const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection, Message, MessageSelectMenu, CommandInteraction, ButtonInteraction, SelectMenuInteraction } = require("discord.js");
-const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots, getUnixTimestamp, createErrorEmbed } = require("../utils");
+const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots, getUnixTimestamp, createErrorEmbed, logUnlessUnknown, fetchCachedChannel } = require("../utils");
 const { starboard } = require('../database/dbObjects');
 
 const star_count = 2;
@@ -116,8 +116,8 @@ async function updateStarboard(reaction, user) {
     // }
 
     //fetch starboard channel
-    const star_ch = await message.guild.channels.fetch(ids.star_ch);
-    if (!star_ch) return;
+    const star_channel = fetchCachedChannel(ids.channels.starboard);
+    if (!star_channel) return;
 
     //fetch starboard entry from cache or db
     const starboard_entry = await fetchStarboardEntry(message.id);
@@ -131,7 +131,7 @@ async function updateStarboard(reaction, user) {
             //delete from cache
             starboard_cache.delete(message.id);
             //fetch and delete the starboard message
-            const starboard_message = await star_ch.messages.fetch(starboard_entry.id);
+            const starboard_message = await star_channel.messages.fetch(starboard_entry.id);
             await starboard_message.delete();
         }
         return;
@@ -143,7 +143,7 @@ async function updateStarboard(reaction, user) {
     //update existing starboard entry
     if (starboard_entry) {
         //fetch starboard message
-        const starboard_message = await star_ch.messages.fetch(starboard_entry.id);
+        const starboard_message = await star_channel.messages.fetch(starboard_entry.id);
         if (!starboard_message) return;
         //update message with edited embed
         await starboard_message.edit({ embeds: [embed] }).catch(console.error);
@@ -160,7 +160,7 @@ async function updateStarboard(reaction, user) {
             .setStyle(ButtonStyle.Link)
             .setURL(message.url);
         //send new message in starboard channel
-        const sent = await star_ch.send({ 
+        const sent = await star_channel.send({ 
             embeds: [embed],
             components: [new MessageActionRow().addComponents([link])]
         });
@@ -177,7 +177,7 @@ async function updateStarboard(reaction, user) {
         }).catch(e => {
             //in case something goes wrong, delete message from starboard channel
             console.error(e);
-            sent.delete().catch(e => e.code === 10008 ? {} : console.error(e));
+            sent.delete().catch(logUnlessUnknown);
         });
         //cache new starboard entry
         if (new_entry) starboard_cache.set(message.id, new_entry);
@@ -411,4 +411,4 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
 module.exports = {
     updateStarboard,
     updateStarboardViewer
-}
+};

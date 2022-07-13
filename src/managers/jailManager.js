@@ -1,26 +1,7 @@
 const { ButtonStyle } = require('discord-api-types/v10');
-const { Client, MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection, TextChannel } = require('discord.js');
+const { MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection, TextChannel } = require('discord.js');
 const { Op, jail_records, jailed_roles} = require('../database/dbObjects');
-const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots } = require('../utils');
-
-/**@type {TextChannel} */
-let records_channel;
-
-/**
- * Caches #criminal-records channel
- * @param {Client} client 
- */
-async function setRecordsChannel(client) {
-    records_channel = await client.channels.fetch(ids.records_ch);
-}
- 
-/**
- * Returns cached #criminal-records channel
- * @returns {TextChannel}
- */
-function getRecordsChannel() {
-    return records_channel;
-}
+const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots, logUnlessUnknown, fetchCachedChannel } = require('../utils');
 
 /**
  * K: record ID
@@ -69,7 +50,7 @@ class JailData {
             }
 
             //removed jailed role
-            this.member = await this.member.roles.remove(ids.jailed_role, audit_log_msg);
+            this.member = await this.member.roles.remove(ids.roles.jailed, audit_log_msg);
         }
 
         //update time of release with current timestamp
@@ -105,7 +86,7 @@ class JailData {
                 new MessageActionRow().addComponents([unjail_button, timer_button]),
                 new MessageActionRow().addComponents([edit_button, del_button])
             ]
-        }).catch(e => e.code === 10008 ? {} : console.error(e));
+        }).catch(logUnlessUnknown);
     }
 
     /**
@@ -184,7 +165,7 @@ class JailData {
 
         //delete #criminal-records message
         if (this.message instanceof Message) 
-            await this.message.delete().catch(e => e.code === 10008 ? {} : console.error(e));
+            await this.message.delete().catch(logUnlessUnknown);
 
         //remove data from cache
         jail_data_cache.delete(this.record.id);
@@ -206,7 +187,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
     const release_timestamp = duration && duration > 0 ? jail_timestamp + duration : null;
 
     //get collection of member's roles, apart from base @@everyone role and jailed role
-    const roles = member.roles.cache.filter(role => role.id !== ids.guild && role.id !== ids.jailed_role);
+    const roles = member.roles.cache.filter(role => role.id !== ids.guild && role.id !== ids.roles.jailed);
     //used for cached JailData
     const role_entries = [];
     //used for main embed
@@ -268,7 +249,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
         //remove member's roles
         member = await member.roles.remove( roles, audit_log_msg );
         //add jailed role
-        member = await member.roles.add(ids.jailed_role, audit_log_msg);
+        member = await member.roles.add(ids.roles.jailed, audit_log_msg);
 
         //create main info embed to be sent in #criminal-records
         const main_embed = new MessageEmbed()
@@ -314,7 +295,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
             .setDisabled();
 
         //send generated jail message to #criminal-records
-        var records_msg = await records_channel.send({
+        var records_msg = await fetchCachedChannel(ids.channels.records).send({
             embeds: embeds,
             components: [
                 new MessageActionRow().addComponents([unjail_button, timer_button]),
@@ -350,7 +331,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
 
         //if message was sent
         if (records_msg) {
-            records_msg.delete().catch(e => e.code === 10008 ? {} : console.error(e));
+            records_msg.delete().catch(logUnlessUnknown);
         }
 
         //the command handler should still handle the error
@@ -409,7 +390,7 @@ async function getJailDataByRecord(record_resolvable) {
             //fetch message #criminal-records
             const regexp = record.url.match(/(\d+)$/);
             const message_id = regexp[1];
-            const message = await records_channel.messages.fetch(message_id);
+            const message = await fetchCachedChannel(ids.channels.records).messages.fetch(message_id);
             //fetch guild member
             const member = await message?.guild.members.fetch(record.offender_id);
             //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
@@ -456,7 +437,7 @@ async function getJailDataByMember(member, active = true) {
             //fetch message from #criminal-records
             const regexp = record.url.match(/(\d+)$/);
             const message_id = regexp[1];
-            const message = await records_channel.messages.fetch(message_id);
+            const message = await fetchCachedChannel(ids.channels.records).messages.fetch(message_id);
             //create new JailData
             const data = new JailData(record, role_entries, member, message);
             //cache it
@@ -497,7 +478,7 @@ async function getJailDataByMessage(message_resolvable, guild) {
             if (is_resolvable_url) {
                 const regexp = url.match(/(\d+)$/);
                 const message_id = regexp[1];
-                message = await records_channel.messages.fetch(message_id);
+                message = await fetchCachedChannel(ids.channels.records).messages.fetch(message_id);
             }
             //fetch guild member
             const member = await message?.guild.members.fetch(record.offender_id);
@@ -623,8 +604,6 @@ async function createDeletedMessageEmbed(message) {
 }
 
 module.exports = {
-    setRecordsChannel,
-    getRecordsChannel,
     jailMember,
     getJailDataByRecord,
     getJailDataByMember,
@@ -632,4 +611,4 @@ module.exports = {
     checkJailCache,
     cacheJailData,
     cacheDeletedMessage
-}
+};
