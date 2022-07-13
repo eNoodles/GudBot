@@ -16,4 +16,4 @@ module.exports = {
 
         if (reaction.emoji.name === '⭐') await updateStarboard(reaction, user);
     }
-}
+};
