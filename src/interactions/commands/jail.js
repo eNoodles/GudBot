@@ -43,7 +43,8 @@ module.exports = {
      * @param {CommandInteraction} interaction 
      */
 	async execute(interaction) {
-        const member = interaction.options.getMember('user');
+        const { options } = interaction;
+        const member = options.getMember('user');
 
         //no jail overrides
         if (member.roles.cache.has(ids.roles.jailed)) {
@@ -60,11 +61,11 @@ module.exports = {
             return;
         }
 
-        const reason = interaction.options.getString('reason');
+        const reason = options.getString('reason');
         
-        const minutes = interaction.options.getInteger('minutes') || 0;
-        const hours = interaction.options.getInteger('hours') || 0;
-        const days = interaction.options.getInteger('days') || 0;
+        const minutes = options.getInteger('minutes') || 0;
+        const hours = options.getInteger('hours') || 0;
+        const days = options.getInteger('days') || 0;
 
         const duration = getDurationSeconds(minutes, hours, days);
 

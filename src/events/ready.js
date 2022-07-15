@@ -1,6 +1,6 @@
 const { cacheJailData, checkJailCache } = require('../managers/jailManager');
 const { generateBlacklist, generateWhitelists } = require('../managers/censorManager');
-const { ids, cacheChannels, fetchCachedChannel } = require('../utils');
+const { ids, cacheChannels, getCachedChannel } = require('../utils');
 const { checkMessageGroups } = require('../managers/spamManager');
 
 module.exports = {
@@ -17,11 +17,10 @@ module.exports = {
 		//fetch last 100 messages from #criminal-records
 		//this is in case an old records message is deleted, which would have otherwise been uncached
 		//this promise rejecting is non critical, catch it and keep going
-		fetchCachedChannel(ids.channels.records)?.messages.fetch({ limit: 100, cache: true }).catch(console.error);
+		getCachedChannel(ids.channels.records)?.messages.fetch({ limit: 100, cache: true }).catch(console.error);
 
 		//fetch and cache jail data from database for jail manager
-		const guild = await client.guilds.fetch(ids.guild);
-		cacheJailData(guild);
+		cacheJailData().catch(console.error);
 
 		//do checks every 5 seconds
 		setInterval(() => {

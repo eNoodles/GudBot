@@ -16,7 +16,8 @@ module.exports = {
      * @param {CommandInteraction} interaction 
      */
 	async execute(interaction) {
-        const message = await interaction.channel.send({ content: interaction.options.getString('text') });
+        const { options } = interaction;
+        const message = await interaction.channel.send({ content: options.getString('text') });
 
         const embed = new MessageEmbed()
             .setDescription('Message sent')

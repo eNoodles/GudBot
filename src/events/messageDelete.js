@@ -1,7 +1,7 @@
 const { Client, Message, MessageEmbed } = require('discord.js');
 const { censored_authors_cache } = require('../managers/censorManager');
 const { cacheDeletedMessage, getJailDataByMessage } = require('../managers/jailManager');
-const { ids, colors, fetchCachedChannel } = require('../utils');
+const { ids, colors, getCachedChannel } = require('../utils');
 
 module.exports = {
     /**
@@ -47,7 +47,7 @@ module.exports = {
                         .setDescription(`<@${deleter.id}> deleted <@${data.member.id}>'s jail record from <t:${data.record.jail_timestamp}:f>`)
                         .setColor(colors.red);
 
-                    await fetchCachedChannel(ids.channels.records).send({ embeds: [embed] });
+                    await getCachedChannel(ids.channels.records).send({ embeds: [embed] });
                 }
 
                 //no need to cache this message
@@ -56,7 +56,7 @@ module.exports = {
         }
 
         //censored messages were originally sent by a user, but message author will be marked as bot
-        const censored_message = message.webhookId && censored_authors_cache.get(message.id);
+        const censored_message = message.webhookId && !message.interaction && censored_authors_cache.get(message.id);
         //cache user sent messages
         //if message is uncached, author will be null
         if ((message.author && !message.author.bot) || censored_message)

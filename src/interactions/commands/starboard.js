@@ -10,19 +10,21 @@ module.exports = {
         .setDefaultMemberPermissions(PermissionFlagsBits.ReadMessageHistory)
         .addUserOption(option => option
             .setName('user')
-            .setDescription('Only show posts from this user.')
+            .setDescription('Sort by user.')
         )
         .addChannelOption(option => option
             .setName('channel')
-            .setDescription('Only show posts from this channel.')
+            .setDescription('Sort by channel.')
             .addChannelTypes(ChannelType.GuildText)
         ),
     /**
      * @param {CommandInteraction} interaction 
      */
 	async execute(interaction) {
-        const member_id = interaction.options.getMember('user')?.id;
-        const channel_id = interaction.options.getChannel('channel')?.id;
+        const { options } = interaction;
+        
+        const member_id = options.getMember('user')?.id;
+        const channel_id = options.getChannel('channel')?.id;
 
         await updateStarboardViewer(interaction, {
             user_id: member_id,
