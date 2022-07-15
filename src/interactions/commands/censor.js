@@ -28,6 +28,7 @@ module.exports = {
                     .setName('word')
                     .setDescription('Word (string or regular expression) that you want to remove.')
                     .setRequired(true)
+                    .setAutocomplete(true)
                 )
             )
         )
@@ -67,14 +68,14 @@ module.exports = {
      * @param {CommandInteraction} interaction 
      */
     async execute(interaction) {
-        
-        const subcommand_group = interaction.options.getSubcommandGroup(false) ?? '';
-        const subcommand = interaction.options.getSubcommand();
+        const { options } = interaction;
+        const subcommand_group = options.getSubcommandGroup(false) ?? '';
+        const subcommand = options.getSubcommand();
         const user = interaction.user;
 
         switch (`${subcommand_group}${subcommand}`) {
             case 'blacklistadd': {
-                let word = interaction.options.getString('word');
+                let word = options.getString('word');
 
                 //make sure string isn't too short or too long
                 if (word.length < 3 || word.length > 50) {
@@ -113,7 +114,17 @@ module.exports = {
                 const entry = await blacklist.create({
                     word: word,
                     added_by: user.id
+                }).catch(e => {
+                    if (e.name === 'SequelizeUniqueConstraintError') {
+                        interaction.reply({
+                            embeds: [createErrorEmbed(`Blacklist already contains \`${word}\``)],
+                            ephemeral: true
+                        }).catch(console.error);
+                    }
+                    else console.error(e);
                 });
+
+                if (!entry) return;
 
                 //update global regexp
                 generateBlacklist();
@@ -121,14 +132,32 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setTitle('Censorship database updated')
                     .setDescription(`Added \`${entry.word}\` to blacklist.`)
-                    .setColor(colors.purple);
+                    .setColor(colors.black);
 
                 await interaction.reply({ embeds: [embed] });
 
                 break;
             }
             case 'blacklistremove': {
-                let word = interaction.options.getString('word');
+                let word = options.getString('word');
+
+                //make sure string isn't too short or too long
+                if (word.length < 3 || word.length > 50) {
+                    await interaction.reply({
+                        embeds: [createErrorEmbed(`Please enter a string between 3 - 50 characters.`)], 
+                        ephemeral: true
+                    });
+                    return;
+                }
+
+                //no whitespace
+                if (word.match(/\s/)) {
+                    await interaction.reply({
+                        embeds: [createErrorEmbed(`String must not contain whitespace (spaces, linebreaks, tabs).`)], 
+                        ephemeral: true
+                    });
+                    return;
+                }
                 
                 //fetch entry matching given word
                 const entry = await blacklist.findOne({ where: { word: word } });
@@ -143,7 +172,7 @@ module.exports = {
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
                         .setDescription(`Removed \`${word}\` from blacklist.`)
-                        .setColor(colors.purple);
+                        .setColor(colors.black);
 
                     await interaction.reply({ embeds: [embed] });
                 }
@@ -157,7 +186,7 @@ module.exports = {
                 break;
             }
             case 'whitelistadd': {
-                const mentionable = interaction.options.getString('mentionable');
+                const mentionable = options.getString('mentionable');
 
                 //match mention of role, user or channel
                 //capture "type" and id
@@ -180,7 +209,17 @@ module.exports = {
                     id: regexp[2],
                     type: regexp[1],
                     added_by: user.id
+                }).catch(e => {
+                    if (e.name === 'SequelizeUniqueConstraintError') {
+                        interaction.reply({
+                            embeds: [createErrorEmbed(`Whitelist already contains ${regexp[0]}`)],
+                            ephemeral: true
+                        }).catch(console.error);
+                    }
+                    else console.error(e);
                 });
+
+                if (!entry) return;
 
                 //update whitelists
                 generateWhitelists();
@@ -188,14 +227,14 @@ module.exports = {
                 const embed = new MessageEmbed()
                     .setTitle('Censorship database updated')
                     .setDescription(`Added <${entry.type}${entry.id}> to whitelist.`)
-                    .setColor(colors.purple);
+                    .setColor(colors.white);
 
                 await interaction.reply({ embeds: [embed] });
 
                 break;
             }
             case 'whitelistremove': {
-                const mentionable = interaction.options.getString('mentionable');
+                const mentionable = options.getString('mentionable');
 
                 //match mention of role, user or channel
                 //we dont need the type for this, so it is a non capture group
@@ -223,7 +262,7 @@ module.exports = {
                     const embed = new MessageEmbed()
                         .setTitle('Censorship database updated')
                         .setDescription(`Removed ${regexp[0]} from whitelist.`)
-                        .setColor(colors.purple);
+                        .setColor(colors.white);
 
                     await interaction.reply({ embeds: [embed] });
                 }
@@ -238,8 +277,7 @@ module.exports = {
             }
             case 'list': {
                 //fetch all entries from blacklist and whitelist tables
-                const blacklist_entries = await blacklist.findAll();
-                const whitelist_entries = await whitelist.findAll();
+                const [blacklist_entries, whitelist_entries] = await Promise.all([blacklist.findAll(), whitelist.findAll()]);
     
                 //format description
                 let desc = '**Blacklist:**\n';
@@ -272,7 +310,7 @@ module.exports = {
 
                 await interaction.reply({
                     embeds: [embed],
-                    ephemeral: interaction.options.getBoolean('ephemeral')
+                    ephemeral: options.getBoolean('ephemeral')
                 });
 
                 break;
