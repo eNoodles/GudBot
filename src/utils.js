@@ -46,6 +46,7 @@ const colors = {
     purple: 10434242,
     blurple: 7506394,
     nitro: 16741370,
+    white: 16777215,
     black: 0
 };
 
@@ -56,19 +57,22 @@ const channels_cache = new Collection();
  * @param {Client} client 
  */
 async function cacheChannels(client) {
+    const promises = [];
     for (const prop in ids.channels) {
         const id = ids.channels[prop];
-        const channel = await client.channels.fetch(id).catch(console.error);
-        if (channel)
-            channels_cache.set(id, channel);
+        const cache_channel = client.channels.fetch(id)
+            .then(channel => channels_cache.set(id, channel))
+            .catch(console.error);
+        promises.push(cache_channel);
     }
+    await Promise.allSettled(promises);
 }
  
 /**
  * @param {string} id channel ID
  * @returns {TextChannel} cached channel
  */
-function fetchCachedChannel(id) {
+function getCachedChannel(id) {
     return channels_cache.get(id);
 }
 
@@ -260,7 +264,7 @@ module.exports = {
     ids,
     colors,
     cacheChannels,
-    fetchCachedChannel,
+    getCachedChannel,
     getUnixTimestamp,
     logUnlessUnknown,
     hasRole,
