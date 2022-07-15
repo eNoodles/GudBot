@@ -6,6 +6,7 @@ module.exports = {
 		const { commandName, customId } = interaction;
 
 		const response = 
+			interaction.isAutocomplete() ? client.autocomplete.get(commandName) :
 			interaction.isCommand() ? client.commands.get(commandName) :
 			interaction.isUserContextMenu() ? client.userContextMenus.get(commandName) :
 			interaction.isMessageContextMenu() ? client.messageContextMenus.get(commandName) :

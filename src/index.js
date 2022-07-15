@@ -37,7 +37,7 @@ for (const file of event_files) {
         client.on(event_name, (...args) => event.execute(client, ...args).catch(console.error));
 }
 
-['commands','userContextMenus','messageContextMenus','buttons','modals','selectMenus'].forEach(type => {
+['autocomplete','commands','userContextMenus','messageContextMenus','buttons','modals','selectMenus'].forEach(type => {
 
     const interaction_files = fs.readdirSync(`./src/interactions/${type}`).filter(file => file.endsWith('.js'));
 
