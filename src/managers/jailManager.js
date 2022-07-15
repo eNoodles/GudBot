@@ -1,7 +1,8 @@
 const { ButtonStyle } = require('discord-api-types/v10');
-const { MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection, TextChannel } = require('discord.js');
+const { MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection } = require('discord.js');
+const { Model } = require('sequelize');
 const { Op, jail_records, jailed_roles} = require('../database/dbObjects');
-const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots, logUnlessUnknown, fetchCachedChannel } = require('../utils');
+const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots, logUnlessUnknown, getCachedChannel } = require('../utils');
 
 /**
  * K: record ID
@@ -31,32 +32,25 @@ class JailData {
         //make sure user hasnt already been unjailed
         if (this.record.unjailed) throw 'Jail record already marked as unjailed!';
 
-        //check member since he could have left the server since being jailed
-        this.member = await this.member.fetch(false);
-        if (this.member) {
-            //generate array of ids to add
-            const role_ids = [];
-            this.role_entries.forEach(entry => {
-                role_ids.push(entry.role_id);
-            });
+        //message displayed in audit log
+        const audit_log_msg = unjailer_user ? `Unjailed by ${unjailer_user.tag}` : 'Unjailed automatically';
 
-            //message displayed in audit log
-            const audit_log_msg = unjailer_user ? `Unjailed by ${unjailer_user.tag}` : 'Unjailed automatically';
-
-            //make sure role_ids array isn't empty
-            if (role_ids.length) {
-                //give member back his roles
-                this.member = await this.member.roles.add( role_ids, audit_log_msg );
-            }
-
-            //removed jailed role
-            this.member = await this.member.roles.remove(ids.roles.jailed, audit_log_msg);
-        }
+        //removed jailed role and restore saved roles
+        const set_roles = this.member.roles
+            .set(
+                this.role_entries.map(entry => entry.role_id), 
+                audit_log_msg
+            )
+            .then(member => this.member = member)
+            .catch(console.error);
 
         //update time of release with current timestamp
         const current_timestamp = getUnixTimestamp();
         //mark jail record as unjailed so it isn't checked next time
-        this.record = await this.record.update({ unjailed: true, release_timestamp: current_timestamp });
+        const update_record = this.record
+            .update({ unjailed: true, release_timestamp: current_timestamp })
+            .then(model => this.record = model)
+            .catch(console.error);
 
         //update main embed of records message
         const { embeds } = this.message;
@@ -80,13 +74,19 @@ class JailData {
         const del_button = new MessageButton(second_row[1]).setDisabled(false);
 
         //update #criminal-records message
-        this.message = await this.message.edit({
-            embeds: embeds,
-            components: [
-                new MessageActionRow().addComponents([unjail_button, timer_button]),
-                new MessageActionRow().addComponents([edit_button, del_button])
-            ]
-        }).catch(logUnlessUnknown);
+        const edit_message = this.message
+            .edit({
+                embeds: embeds,
+                components: [
+                    new MessageActionRow().addComponents([unjail_button, timer_button]),
+                    new MessageActionRow().addComponents([edit_button, del_button])
+                ]
+            })
+            .then(message => this.message = message)
+            .catch(logUnlessUnknown);
+        
+        //await all promises
+        await Promise.all([set_roles, update_record, edit_message]);
     }
 
     /**
@@ -102,7 +102,10 @@ class JailData {
         //update time of release
         const current_timestamp = getUnixTimestamp();
         const release_timestamp = current_timestamp + duration;
-        this.record = await this.record.update({ release_timestamp: release_timestamp });
+        const update_record = this.record
+            .update({ release_timestamp: release_timestamp })
+            .then(model => this.record = model)
+            .catch(console.error);
 
         //update main embed of records message
         const { embeds } = this.message;
@@ -116,7 +119,13 @@ class JailData {
         embeds.splice(0, 1, new_embed);
 
         //update #criminal-records message
-        this.message = await this.message.edit({ embeds: embeds });
+        const edit_message = this.message
+            .edit({ embeds: embeds })
+            .then(message => this.message = message)
+            .catch(logUnlessUnknown);
+
+        //await all promises
+        await Promise.all([update_record, edit_message]);
     }
 
     /**
@@ -124,7 +133,10 @@ class JailData {
      */
     async updateReason(reason) {
         //update time of release
-        this.record = await this.record.update({ reason: reason });
+        const update_record = this.record
+            .update({ reason: reason })
+            .then(model => this.record = model)
+            .catch(console.error);
 
         //update main embed of records message
         const { embeds } = this.message;
@@ -138,7 +150,13 @@ class JailData {
         embeds.splice(0, 1, new_embed);
 
         //update #criminal-records message
-        this.message = await this.message.edit({ embeds: embeds });
+        const edit_message = this.message
+            .edit({ embeds: embeds })
+            .then(message => this.message = message)
+            .catch(logUnlessUnknown);
+
+        //await all promises
+        await Promise.all([update_record, edit_message]);
     }
 
     /**
@@ -159,13 +177,18 @@ class JailData {
 
     async deleteRecord() {
         console.log(`deleting record #${this.record.id}`);
+        let destroy_record, delete_message;
 
         //delete record from db
-        await this.record.destroy().catch(console.error);
+        if (this.record instanceof Model)
+            destroy_record = this.record.destroy().catch(console.error);
 
         //delete #criminal-records message
         if (this.message instanceof Message) 
-            await this.message.delete().catch(logUnlessUnknown);
+            delete_message = this.message.delete().catch(logUnlessUnknown);
+
+        //await all promises
+        await Promise.all([destroy_record, delete_message]);
 
         //remove data from cache
         jail_data_cache.delete(this.record.id);
@@ -187,22 +210,22 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
     const release_timestamp = duration && duration > 0 ? jail_timestamp + duration : null;
 
     //get collection of member's roles, apart from base @@everyone role and jailed role
-    const roles = member.roles.cache.filter(role => role.id !== ids.guild && role.id !== ids.roles.jailed);
-    //used for cached JailData
-    const role_entries = [];
+    const roles = member.roles.cache.filter(r => r.id !== ids.guild && r.id !== ids.roles.jailed);
+    //for JailData.role_entries
+    const create_role_entries = [];
     //used for main embed
     let roles_str = '';
 
     //if any errors happen here, we want to catch them separately to cleanup uncompleted jail process
     try {
-        //clear role bank of member's previously saved roles (just in case)
+        //clear role bank of member's previously saved roles
         await jailed_roles.destroy({ where: { user_id: member.id } });
 
         //save member's roles in db
-        roles.forEach( async role => {
+        roles.forEach(role => {
             //create array of these model instances for the JailData cache
-            role_entries.push(
-                await jailed_roles.create({
+            create_role_entries.push(
+                jailed_roles.create({
                     user_id: member.id,
                     role_id: role.id
                 })
@@ -211,6 +234,8 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
             //format role list for embed
             roles_str += `<@&${role.id}> `;
         });
+        const role_promises = Promise.all(create_role_entries);
+
         //make sure role list isn't over 1024 chars
         if (roles_str.length > 1024) {
             roles_str = roles_str.substring(
@@ -234,7 +259,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
         if (prior_offenses.length > 8) prior_offenses_str += `+${prior_offenses.length - 8} more`;
 
         //create new record in db
-        var jail_record = await jail_records.create({
+        var jail_record = jail_records.create({
             offender_id: offender_id,
             jailer_id: jailer_id,
             reason: reason,
@@ -246,10 +271,11 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
 
         //message displayed in audit log
         const audit_log_msg = `Jailed by ${jailer_user.tag}`;
-        //remove member's roles
-        member = await member.roles.remove( roles, audit_log_msg );
-        //add jailed role
-        member = await member.roles.add(ids.roles.jailed, audit_log_msg);
+        //add jailed role and remove all others
+        const set_roles = member.roles.set([ids.roles.jailed], audit_log_msg);
+
+        //await record creation and role updates
+        [jail_record, member] = await Promise.all([jail_record, set_roles]);
 
         //create main info embed to be sent in #criminal-records
         const main_embed = new MessageEmbed()
@@ -295,7 +321,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
             .setDisabled();
 
         //send generated jail message to #criminal-records
-        var records_msg = await fetchCachedChannel(ids.channels.records).send({
+        var records_msg = await getCachedChannel(ids.channels.records).send({
             embeds: embeds,
             components: [
                 new MessageActionRow().addComponents([unjail_button, timer_button]),
@@ -304,7 +330,12 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
         });
 
         //update jail record with url of newly sent message
-        jail_record = await jail_record.update({ url: records_msg.url })
+        const update_jail_record = jail_record.update({ url: records_msg.url });
+        jail_record = await update_jail_record;
+
+        //make sure role entries have been created
+        const role_entries = await role_promises;
+
         //create JailData for cache
         jail_data_cache.set(jail_record.id, new JailData(jail_record, role_entries, member, records_msg));
 
@@ -390,7 +421,7 @@ async function getJailDataByRecord(record_resolvable) {
             //fetch message #criminal-records
             const regexp = record.url.match(/(\d+)$/);
             const message_id = regexp[1];
-            const message = await fetchCachedChannel(ids.channels.records).messages.fetch(message_id);
+            const message = await getCachedChannel(ids.channels.records).messages.fetch(message_id);
             //fetch guild member
             const member = await message?.guild.members.fetch(record.offender_id);
             //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
@@ -437,7 +468,7 @@ async function getJailDataByMember(member, active = true) {
             //fetch message from #criminal-records
             const regexp = record.url.match(/(\d+)$/);
             const message_id = regexp[1];
-            const message = await fetchCachedChannel(ids.channels.records).messages.fetch(message_id);
+            const message = await getCachedChannel(ids.channels.records).messages.fetch(message_id);
             //create new JailData
             const data = new JailData(record, role_entries, member, message);
             //cache it
@@ -478,7 +509,7 @@ async function getJailDataByMessage(message_resolvable, guild) {
             if (is_resolvable_url) {
                 const regexp = url.match(/(\d+)$/);
                 const message_id = regexp[1];
-                message = await fetchCachedChannel(ids.channels.records).messages.fetch(message_id);
+                message = await getCachedChannel(ids.channels.records).messages.fetch(message_id);
             }
             //fetch guild member
             const member = await message?.guild.members.fetch(record.offender_id);
@@ -509,9 +540,8 @@ function checkJailCache() {
 
 /**
  * Fetches jail records from the past 24 hours, creates JailData for them and caches it.
- * @param {Guild} guild 
  */
-async function cacheJailData(guild) {
+async function cacheJailData() {
     const current_timestamp = getUnixTimestamp();
     //fetch records no older than one day
     const records = await jail_records.findAll({

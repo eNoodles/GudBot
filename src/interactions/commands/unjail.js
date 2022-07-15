@@ -2,7 +2,7 @@ const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { MessageEmbed, CommandInteraction, MessageActionRow, MessageButton } = require('discord.js');
 const { getJailDataByMember } = require('../../managers/jailManager');
-const { createErrorEmbed, colors, generateIntegerChoices, ids, getDurationSeconds, fetchCachedChannel } = require('../../utils');
+const { createErrorEmbed, colors, generateIntegerChoices, ids, getDurationSeconds, getCachedChannel } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -38,7 +38,9 @@ module.exports = {
      * @param {CommandInteraction} interaction 
      */
 	async execute(interaction) {
-        const member = interaction.options.getMember('user');
+        const { options } = interaction;
+        const member = options.getMember('user');
+
         //make sure member is currently jailed
         if (!member.roles.cache.has(ids.roles.jailed)) {
             await interaction.reply({
@@ -60,9 +62,9 @@ module.exports = {
             return;
         }
 
-        const minutes = interaction.options.getInteger('minutes') || 0;
-        const hours = interaction.options.getInteger('hours') || 0;
-        const days = interaction.options.getInteger('days') || 0;
+        const minutes = options.getInteger('minutes') || 0;
+        const hours = options.getInteger('hours') || 0;
+        const days = options.getInteger('days') || 0;
 
         const duration = getDurationSeconds(minutes, hours, days);
 
@@ -76,7 +78,7 @@ module.exports = {
                 .setDescription(`<@${interaction.user.id}> updated release time of <@${member.id}>`)
                 .setColor(colors.gray);
 
-            await fetchCachedChannel(ids.channels.records).send({
+            const notify = getCachedChannel(ids.channels.records).send({
                 reply: {
                     messageReference: data.message,
                     failIfNotExists: false
@@ -94,11 +96,13 @@ module.exports = {
                 .setStyle(ButtonStyle.Link)
                 .setURL(data.message.url);
                 
-            await interaction.reply({
+            const send_reply = interaction.reply({
                 embeds: [reply_embed],
                 components: [new MessageActionRow().addComponents([view_button])],
                 ephemeral: true
             });
+
+            await Promise.allSettled([notify, send_reply]);
         }
         //otherwise, instantly unjail
         else {
@@ -109,7 +113,7 @@ module.exports = {
                 .setDescription(`<@${interaction.user.id}> unjailed <@${member.id}>`)
                 .setColor(colors.green);
 
-            await fetchCachedChannel(ids.channels.records).send({
+            const notify = getCachedChannel(ids.channels.records).send({
                 reply: {
                     messageReference: data.message,
                     failIfNotExists: false
@@ -127,11 +131,13 @@ module.exports = {
                 .setStyle(ButtonStyle.Link)
                 .setURL(data.message.url);
                 
-            await interaction.reply({
+            const send_reply =  interaction.reply({
                 embeds: [reply_embed],
                 components: [new MessageActionRow().addComponents([view_button])],
                 ephemeral: true
             });
+
+            await Promise.allSettled([notify, send_reply]);
         }
 	}
 };

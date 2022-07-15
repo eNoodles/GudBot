@@ -1,6 +1,6 @@
 const { ButtonStyle } = require("discord-api-types/v10");
 const { Message, Collection, GuildMember, TextChannel, MessageEmbed, MessageButton, MessageActionRow } = require("discord.js");
-const { trimWhitespace, ids, logUnlessUnknown, colors, fetchCachedChannel, isAdmin } = require("../utils");
+const { trimWhitespace, ids, logUnlessUnknown, colors, getCachedChannel, isAdmin } = require("../utils");
 const { jailMember } = require("./jailManager");
 
 const thresholds = {
@@ -100,6 +100,9 @@ class MessageGroup {
                 channel_data.channel.bulkDelete(channel_data.messages).catch(logUnlessUnknown);
             }
         });
+
+        //store promise calls
+        const promises = [];
         
         let senders_field = '';
         this.senders.forEach(async (sender_data, sender_id) => {
@@ -110,19 +113,23 @@ class MessageGroup {
 
             //if ban action taken, ban senders
             if (this.ban.active && member.manageable && !isAdmin(member)) {
-                await member.ban({
-                    reason: this.ban.reason,
-                    days: this.ban.days
-                }).catch(console.error);
+                promises.push(
+                    member.ban({
+                        reason: this.ban.reason,
+                        days: this.ban.days
+                    }).catch(console.error)
+                );
             }
             //otherwise if jail action taken, jail senders
             else if (this.jail.active && !member.roles.cache.has(ids.roles.jailed) && member.manageable && !isAdmin(member)) {
-                await jailMember(
-                    member, 
-                    { id: ids.client, tag: 'GudBot#4788' },
-                    this.jail.reason,
-                    this.jail.duration
-                ).catch(console.error);
+                promises.push(
+                    jailMember(
+                        member, 
+                        { id: ids.client, tag: 'GudBot#4788' },
+                        this.jail.reason,
+                        this.jail.duration
+                    ).catch(console.error)
+                );
             }
         });
 
@@ -193,18 +200,24 @@ class MessageGroup {
 
         //update existing info message
         if (this.info_message) {
-            this.info_message = await this.info_message.edit({
-                embeds: [embed],
-                components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
-            });
+            promises.push(
+                this.info_message.edit({
+                    embeds: [embed],
+                    components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
+                }).catch(console.error)
+            );
         }
         //send new info message
         else {
-            this.info_message = await fetchCachedChannel(ids.channels.admin).send({
-                embeds: [embed],
-                components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
-            });
+            promises.push(
+                getCachedChannel(ids.channels.admin).send({
+                    embeds: [embed],
+                    components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
+                }).catch(console.error)
+            );
         }
+
+        await Promise.all(promises);
     }
 
     /**

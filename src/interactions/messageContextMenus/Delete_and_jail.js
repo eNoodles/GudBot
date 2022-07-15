@@ -18,7 +18,7 @@ module.exports = {
         const message = interaction.targetMessage;
 
         //delete message no matter what happens with the jailing process
-        await message.delete();
+        message.delete().catch(console.error);
 
         let member = message.member;
 

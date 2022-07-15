@@ -1,6 +1,7 @@
 const { Message, TextChannel, Webhook, Collection } = require('discord.js');
 const { blacklist, whitelist } = require('../database/dbObjects');
 const { ids, prependFakeReply, findLastSpaceIndex, getGuildUploadLimit } = require('../utils');
+const { addToMessageGroups } = require('./spamManager');
 
 let blacklist_regexp = new RegExp('', 'ig');
 
@@ -102,7 +103,8 @@ async function fetchOrCreateHook(channel) {
     if (hook) return hook;
 
     //then fetch and check channel's existing webhooks
-    hook = (await channel.fetchWebhooks())?.find(hook => hook.owner.id === ids.client);
+    const channel_hooks = await channel.fetchWebhooks().catch(console.error);
+    hook = channel_hooks?.find(hook => hook.owner.id === ids.client);
     if (hook) {
         //cache it
         webhooks_cache.set(channel.id, hook);
@@ -110,9 +112,14 @@ async function fetchOrCreateHook(channel) {
     }
 
     //if it doesn't exist, create and cache it
-    hook = await channel.createWebhook('GudBot');
-    webhooks_cache.set(channel.id, hook);
-    return hook;
+    hook = await channel.createWebhook('GudBot').catch(console.error);
+    if (hook) {
+        webhooks_cache.set(channel.id, hook);
+        return hook;
+    }
+    
+    //couldnt fetch or create
+    return null;
 }
 
 /**
@@ -207,7 +214,7 @@ async function censorMessage(message) {
 
     //fetch/create channel webhook if it's not in cache
     //we do this on every messageCreate, not just the ones that need to be censored, so as to populate the cache
-    const hook = await fetchOrCreateHook(channel);
+    const fetch_hook = fetchOrCreateHook(channel).catch(console.error);
 
     //don't do anything if content is empty
     if (!message.content) return false;
@@ -247,9 +254,6 @@ async function censorMessage(message) {
         censored = censored.substring(0, cutoff_index);
     }
 
-    //delete user's original uncensored message
-    message.delete();
-
     //mimic original author's name and pfp
     //mentions are disabled because we dont want to ping people twice
     let message_options = {
@@ -265,10 +269,28 @@ async function censorMessage(message) {
     //add the attachments to the message if there will be no followup (we dont want the attachments to between the intial and followup message)
     if (!censored_followup && attachments.length > 0) message_options.files = attachments;
 
-    //send censored message through webhook
-    const new_msg = await hook.send(message_options);
-    //then cache message id and corresponding author id, so that we could check this for the jail context menu command
-    cacheAuthorId(new_msg.id, message.author.id);
+    //delete user's original uncensored message
+    message.delete().catch(console.error);
+
+    //await for fetch_hook resolve
+    const hook = await fetch_hook;
+    if (!hook) return false;
+
+    const send = [];
+    send.push(
+        //send censored message through webhook
+        hook.send(message_options)
+            //then cache message id and corresponding author id, so that we could check this for the jail context menu command
+            .then(new_message => {
+                cacheAuthorId(new_message.id, message.author.id);
+                
+                //check newly censored message for spam
+                let hybrid_message = new_message;
+                hybrid_message.author = message.author;
+                hybrid_message.member = message.member;
+                addToMessageGroups(hybrid_message).catch(console.error);
+            })
+    );
     
     //this is part 2 of large messages
     if (censored_followup) {
@@ -277,12 +299,18 @@ async function censorMessage(message) {
         //if attachments were not sent with first message
         if (attachments.length > 0) message_options.files = attachments;
         
-        //send and cache ids
-        const new_msg = await hook.send(message_options);
-        cacheAuthorId(new_msg.id, message.author.id);
+        send.push(
+            //send censored message through webhook
+            hook.send(message_options)
+                //then cache message id and corresponding author id, so that we could check this for the jail context menu command
+                .then(new_message => cacheAuthorId(new_message.id, message.author.id))
+        );
     }
 
-    return true;
+    //await both messages to be sent
+    const has_sent = await Promise.all(send);
+
+    return has_sent;
 }
 
 module.exports = {

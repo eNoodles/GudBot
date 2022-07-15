@@ -1,7 +1,7 @@
 const { ContextMenuCommandBuilder } = require('@discordjs/builders');
 const { UserContextMenuInteraction, MessageActionRow, MessageEmbed, MessageButton } = require('discord.js');
 const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
-const { createErrorEmbed, ids, colors, fetchCachedChannel } = require('../../utils');
+const { createErrorEmbed, ids, colors, getCachedChannel } = require('../../utils');
 const { getJailDataByMember } = require('../../managers/jailManager');
 
 module.exports = {
@@ -43,7 +43,7 @@ module.exports = {
             .setDescription(`<@${interaction.user.id}> unjailed <@${member.id}>`)
             .setColor(colors.green);
 
-        await fetchCachedChannel(ids.channels.records).send({
+        const notify = getCachedChannel(ids.channels.records).send({
             reply: {
                 messageReference: data.message,
                 failIfNotExists: false
@@ -61,10 +61,12 @@ module.exports = {
             .setStyle(ButtonStyle.Link)
             .setURL(data.message.url);
             
-        await interaction.reply({
+        const send_reply = interaction.reply({
             embeds: [reply_embed],
             components: [new MessageActionRow().addComponents([view_button])],
             ephemeral: true
         });
+
+        await Promise.allSettled([notify, send_reply]);
     }
 };

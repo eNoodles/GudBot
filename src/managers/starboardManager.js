@@ -1,6 +1,7 @@
 const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection, Message, MessageSelectMenu, CommandInteraction, ButtonInteraction, SelectMenuInteraction } = require("discord.js");
-const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots, getUnixTimestamp, createErrorEmbed, logUnlessUnknown, fetchCachedChannel } = require("../utils");
+const { Model } = require('sequelize');
+const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots, getUnixTimestamp, createErrorEmbed, logUnlessUnknown, getCachedChannel } = require("../utils");
 const { starboard } = require('../database/dbObjects');
 
 const star_count = 2;
@@ -18,7 +19,7 @@ let is_cache_uptodate = false;
 /**
  * Fetches starboard entry from local cache or database (caches it in the latter case)
  * @param {string} original_id ID of original starred message
- * @returns {Model} Model instance of starboard entry
+ * @returns {Promise<Model>} Model instance of starboard entry
  */
 async function fetchStarboardEntry(original_id) {
     //first check local cache
@@ -116,7 +117,7 @@ async function updateStarboard(reaction, user) {
     // }
 
     //fetch starboard channel
-    const star_channel = fetchCachedChannel(ids.channels.starboard);
+    const star_channel = getCachedChannel(ids.channels.starboard);
     if (!star_channel) return;
 
     //fetch starboard entry from cache or db
@@ -126,13 +127,16 @@ async function updateStarboard(reaction, user) {
     if (count < star_count) {
         //starboard entry exists, meaning it had enough stars before, but now a star has been removed
         if (starboard_entry) {
+            //fetch the starboard message
+            const starboard_message = await star_channel.messages.fetch(starboard_entry.id);
+            //delete the starboard message
+            const delete_message = starboard_message.delete();
             //delete entry from db
-            await starboard_entry.destroy();
+            const destroy_entry = starboard_entry.destroy();
             //delete from cache
             starboard_cache.delete(message.id);
-            //fetch and delete the starboard message
-            const starboard_message = await star_channel.messages.fetch(starboard_entry.id);
-            await starboard_message.delete();
+
+            await Promise.all([delete_message, destroy_entry]);
         }
         return;
     }
@@ -145,12 +149,20 @@ async function updateStarboard(reaction, user) {
         //fetch starboard message
         const starboard_message = await star_channel.messages.fetch(starboard_entry.id);
         if (!starboard_message) return;
+
         //update message with edited embed
-        await starboard_message.edit({ embeds: [embed] }).catch(console.error);
+        const edit_starboard = starboard_message
+            .edit({ embeds: [embed] })
+            .catch(console.error);
+
         //update star count in db
-        const new_entry = await starboard_entry.update({ count: count });
-        //update cache
-        starboard_cache.set(message.id, new_entry);
+        const update_entry = starboard_entry
+            .update({ count: count })
+            //update cache
+            .then(entry => starboard_cache.set(message.id, entry))
+            .catch(console.error);
+
+        await Promise.all([edit_starboard, update_entry]);
     }
     //create new starboard entry
     else {
@@ -165,8 +177,9 @@ async function updateStarboard(reaction, user) {
             components: [new MessageActionRow().addComponents([link])]
         });
         if (!sent) return;
+
         //create new entry in db
-        const new_entry = await starboard.create({
+        await starboard.create({
             id: sent.id,
             original_id: message.id,
             channel_id: message.channel.id,
@@ -174,13 +187,14 @@ async function updateStarboard(reaction, user) {
             count: count,
             timestamp: Math.floor(message.createdTimestamp / 1000), //convert ms to seconds
             url: message.url
-        }).catch(e => {
+        })
+        //cache new entry
+        .then(entry => starboard_cache.set(message.id, entry))
+        .catch(e => {
             //in case something goes wrong, delete message from starboard channel
             console.error(e);
             sent.delete().catch(logUnlessUnknown);
         });
-        //cache new starboard entry
-        if (new_entry) starboard_cache.set(message.id, new_entry);
     }
 }
 
