@@ -1,6 +1,6 @@
 const { Client, GuildMember, MessageEmbed } = require('discord.js');
 const { jailMember, getJailDataByMember } = require('../managers/jailManager');
-const { ids, isAdmin, colors, fetchCachedChannel } = require('../utils');
+const { ids, isAdmin, colors, getCachedChannel } = require('../utils');
 
 module.exports = {
     /**
@@ -42,6 +42,12 @@ module.exports = {
                 await jailMember(new_member, jailer_user);
             }
         }
+        //role was added to currently jailed user
+        else if (added_roles && new_roles.has(ids.roles.jailed) && new_member.manageable) {
+            //remove added roles
+            await new_member.roles.remove(added_roles);
+            return;
+        }
         //if jailed role was removed
         else if (removed_roles && removed_roles.has(ids.roles.jailed)) {
             const data = await getJailDataByMember(new_member);
@@ -68,7 +74,7 @@ module.exports = {
                     .setDescription(`<@${jailer_user.id}> unjailed <@${data.member.id}>`)
                     .setColor(colors.green);
 
-                await fetchCachedChannel(ids.channels.records).send({
+                await getCachedChannel(ids.channels.records).send({
                     reply: {
                         messageReference: data.message,
                         failIfNotExists: false
