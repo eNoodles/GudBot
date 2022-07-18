@@ -201,14 +201,6 @@ function addEllipsisDots(text) {
 }
 
 /**
- * Removes whitespace at the beginning and end of string
- * @param {string} text 
- */
-function trimWhitespace(text) {
-    return text.replace(/(?:^\s+)|(?:\s+$)/g, '');
-}
-
-/**
  * @param {Guild} guild 
  * @returns Maximum file upload size in bytes for given guild.
  */
@@ -229,7 +221,7 @@ function prependFakeReply(content, replied_msg, max_length=200) {
         //if there is no message content, then it must have been an attachment-only message
         reply_content = reply_content || '*Click to see attachment*'; //🖻🗎
         //make sure it's not too long
-        reply_content = trimWhitespace(reply_content);
+        reply_content = reply_content.trim();
         if (reply_content.length > max_length) {
             const cutoff_index = findLastSpaceIndex(reply_content, max_length);
             reply_content = reply_content.substring(0, cutoff_index);
@@ -276,7 +268,6 @@ module.exports = {
     extractImageUrls,
     findLastSpaceIndex,
     addEllipsisDots,
-    trimWhitespace,
     getGuildUploadLimit,
     prependFakeReply,
     generateFileLinks,
