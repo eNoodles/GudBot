@@ -32,9 +32,15 @@ for (const file of event_files) {
     const event_name = file.substring(0, file.lastIndexOf('.') );
 
     if (event.once)
-        client.once(event_name, (...args) => event.execute(client, ...args).catch(console.error));
+        client.once(
+            event_name, 
+            async (...args) => await event.execute(client, ...args).catch(console.error)
+        );
     else
-        client.on(event_name, (...args) => event.execute(client, ...args).catch(console.error));
+        client.on(
+            event_name, 
+            async (...args) => await event.execute(client, ...args).catch(console.error)
+        );
 }
 
 ['autocomplete','commands','userContextMenus','messageContextMenus','buttons','modals','selectMenus'].forEach(type => {
