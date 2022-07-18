@@ -1,6 +1,6 @@
 const { ButtonStyle } = require("discord-api-types/v10");
 const { Message, Collection, GuildMember, TextChannel, MessageEmbed, MessageButton, MessageActionRow } = require("discord.js");
-const { trimWhitespace, ids, logUnlessUnknown, colors, getCachedChannel, isAdmin } = require("../utils");
+const { ids, logUnlessUnknown, colors, getCachedChannel, isAdmin } = require("../utils");
 const { jailMember } = require("./jailManager");
 
 const thresholds = {
@@ -15,11 +15,21 @@ const thresholds = {
 };
 
 /**
- * K: Message group ID = First Message's ID
- * V: Message group
- * @type {Collection<string,MessageGroup>}
+ * Currently circulating message groups
+ * @type {MessageGroup[]} 
  */
-let message_groups = new Collection();
+let temp_groups = [];
+/**
+ * @type {number}
+ */
+const max_temp_groups = 10;
+
+/**
+ * Out-of-circulation message groups that have passed some spam threshold
+ * and are being kept around for action handling purposes
+ * @type {MessageGroup[]}
+ */
+let spam_groups = [];
 
 class MessageGroup {
     /**
@@ -29,8 +39,8 @@ class MessageGroup {
     constructor(message, sterilized_content) {
         //group's ID = first message's ID
         this.id = message.id;
-        //unmodified content of first message formatted as a quote for info embed
-        this.content_quote = `> ${message.content.replace(/\n/g, '\n> ')}`;
+        //unmodified content of first message
+        this.original_content = message.content;
         //sterilized content to compare new messages to
         this.sterilized_content = sterilized_content;
         //counter of total messages in group (sum of channel_data/sender_data counts)
@@ -67,11 +77,11 @@ class MessageGroup {
         this.extr_exceeded = false;
         this.warn_exceeded = false;
 
-        //if group is active and should still be compared to new messages
-        this.active = true;
+        //delete MessageGroup after 5 minutes of inactivity
+        this.expiration_time = 300000;
 
-        //delete/deactivate MessageGroup after X milliseconds of inactivity
-        this.expiration_time = 30000;
+        //whether or not group is actively circulating among temp groups
+        this.active = true;
 
         //action status and activator user's ID
         this.delete = { active: false, user_id: '' };
@@ -84,7 +94,7 @@ class MessageGroup {
     }
 
     /**Update info embed, check thresholds and perform necessary actions*/
-    async update() {
+    async handleSpam() {
         //if Ignore is active, deactivate other actions
         this.delete.active = this.delete.active && !this.ignore.active;
         this.jail.active = this.jail.active && !this.ignore.active;
@@ -133,6 +143,9 @@ class MessageGroup {
             }
         });
 
+        //format original content as quote if not done so already
+        this.content_quote = this.content_quote ?? `> ${this.original_content.trim().replace(/\n/g, '\n> ')}`;
+
         //create info embed
         const embed = new MessageEmbed()
             .setColor(
@@ -151,15 +164,15 @@ class MessageGroup {
 
         //determine which actions have been activated by user id, not by active status (because Ignore might've overwritten their status)
         let actions_field_str = '';
-        if (this.delete.user_id) actions_field_str += `\`DELETE\` - <@${this.delete.user_id}>\n`;
-        if (this.jail.user_id) actions_field_str += `\`JAIL\` - <@${this.jail.user_id}>\n`;
-        if (this.ban.user_id) actions_field_str += `\`BAN\` - <@${this.ban.user_id}>\n`;
-        if (this.ignore.user_id) actions_field_str += `\`IGNORE\` - <@${this.ignore.user_id}>\n`;
+        if (this.delete.user_id) actions_field_str += `Delete - <@${this.delete.user_id}>\n`;
+        if (this.jail.user_id) actions_field_str += `Jail - <@${this.jail.user_id}>\n`;
+        if (this.ban.user_id) actions_field_str += `Ban - <@${this.ban.user_id}>\n`;
+        if (this.ignore.user_id) actions_field_str += `Ignore - <@${this.ignore.user_id}>\n`;
 
         //add/update Actions field
         if (actions_field_str) {
             //get rid of unnecessary linebreak at the end
-            actions_field_str = trimWhitespace(actions_field_str);
+            actions_field_str = actions_field_str.trim();
 
             //see if Actions field already exists
             if (embed.fields[2]) {
@@ -201,19 +214,24 @@ class MessageGroup {
         //update existing info message
         if (this.info_message) {
             promises.push(
-                this.info_message.edit({
-                    embeds: [embed],
-                    components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
-                }).catch(console.error)
+                this.info_message
+                    .edit({
+                        embeds: [embed],
+                        components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
+                    })
+                    .catch(console.error)
             );
         }
         //send new info message
         else {
             promises.push(
-                getCachedChannel(ids.channels.admin).send({
-                    embeds: [embed],
-                    components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
-                }).catch(console.error)
+                getCachedChannel(ids.channels.admin)
+                    .send({
+                        embeds: [embed],
+                        components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
+                    })
+                    .then(message => this.info_message = message)
+                    .catch(console.error)
             );
         }
 
@@ -224,7 +242,7 @@ class MessageGroup {
      * Add message to group and update
      * @param {Message} message 
      */
-    async add(message) {
+    async addMessage(message) {
         //increment counter
         this.total_count++;
         //update timestamp
@@ -261,8 +279,8 @@ class MessageGroup {
         }
 
         const channel_count = this.channels.size;
-        //check that extreme threshold has been exceeded and Ignore action has not been taken
-        if (!this.extr_exceeded && !this.ignore) 
+        //check extreme threshold
+        if (!this.extr_exceeded) 
             this.extr_exceeded = this.total_count >= thresholds.message_extr || channel_count >= thresholds.channel_extr;
         //check warning threshold
         if (!this.warn_exceeded) 
@@ -270,23 +288,16 @@ class MessageGroup {
 
         //only do any kind of actions if warning threshold reached, since otherwise there wouldve been no way to interact with message group
         if (this.warn_exceeded) {
-            //increase expiration time to 60 seconds
-            this.expiration_time = 60000;
 
-            //if extreme threshold exceeded
-            if (this.extr_exceeded) {
-                //increase expiration time to 90 seconds
-                this.expiration_time = 90000;
-
-                //if Ignore isnt active, activate Delete action
-                if (!this.ignore.active) {
-                    this.delete.active = true;
-                    this.delete.user_id = ids.client;
-                }
+            //if extreme threshold exceeded and Ignore action not taken
+            if (this.extr_exceeded && !this.ignore.active) {
+                //activate Delete action
+                this.delete.active = true;
+                this.delete.user_id = ids.client;
             }
 
             //update embed and take actions
-            await this.update();
+            await this.handleSpam();
         }
     }
 }
@@ -295,9 +306,46 @@ class MessageGroup {
  * @param {string} id MessageGroup ID = First Message's ID
  * @returns {MessageGroup|undefined}
  */
-function getMessageGroup(id) {
-    return message_groups.get(id);
+function getMessageGroupById(id) {
+    //return message_groups.get(id);
+    return spam_groups.find(group => group.id === id) 
+        ?? temp_groups.find(group => group.id === id);
 }
+
+/**
+ * @param {string} content Message content to compare
+ * @returns {MessageGroup|undefined}
+ */
+function getMessageGroupByContent(content) {
+    //cast to lowercase, then remove emojis and whitespace
+    const sterilized_content = content
+        .toLowerCase()
+        .replace(/(?:\s|<:\w+:\d+>|\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, '');
+
+    return spam_groups.find(group => group.sterilized_content === sterilized_content) 
+        ?? temp_groups.find(group => group.sterilized_content === sterilized_content);
+}
+
+// function compareContent(a, b) {
+//     const [long_str, short_str] = a.length >= b.length ? [a, b] : [b, a];
+//     const ten_percent = Math.ceil(long_str.length * 0.1);
+//     const fifty_percent = Math.ceil(long_str.length * 0.5);
+
+//     let diff_count = long_str.length - short_str.length;
+//     let i = 0;
+//     while (diff_count <= ten_percent) {
+//         if (i >= fifty_percent && diff_count === 0 && a === b) return true;
+//         if (i >= short_str.length) return true;
+        
+//         const char = short_str[i];
+//         const long_str_index = long_str.indexOf(char, i);
+
+//         diff_count += long_str_index === -1 ? 1 : long_str_index - i;
+//         i += long_str_index === -1 ? 1 : long_str_index - i + 1;
+//     }
+
+//     return false;
+// }
 
 /**
  * Compares message content to active MessageGroups, adds it if match found, otherwise creates new MessageGroup starting with this message.
@@ -317,38 +365,58 @@ async function addToMessageGroups(message) {
     //make sure sterilized content isnt empty (if original message only consisted of emojis)
     if (!sterilized_content) return;
 
-    //find ACTIVE message group with matching sterilized content
-    const found_group = message_groups.find(group => group.active && group.sterilized_content === sterilized_content);
+    //find group with matching sterilized content among currently circulating groups
+    const found_index = temp_groups.findIndex(group => group.sterilized_content === sterilized_content);
+    const found_group = temp_groups[found_index];
 
-    //if message group found, add this message to it
-    if (found_group)
-        await found_group.add(message);
-    //otherwise create new message group, use message's ID as the MessageGroup's ID
-    else
-        message_groups.set(message.id, new MessageGroup(message, sterilized_content));
+    //if message group found
+    if (found_group) {
+        //add this message to the group
+        await found_group.addMessage(message);
+        //move group to last position in array
+        temp_groups.push(
+            ...temp_groups.splice(found_index, 1)
+        );
+    }
+    //otherwise create new message group and remove old group if necessary
+    else {
+        temp_groups.push(new MessageGroup(message, sterilized_content));
+
+        //if temp groups have hit max capacity
+        if (temp_groups.length > max_temp_groups) {
+            //remove oldest group
+            const group = temp_groups.shift();
+            //console.log(group);
+
+            //if group has passed some spam threshold
+            if (group?.warn_exceeded) {
+                //increase expiration time to 24 hours
+                group.expiration_time = 86400000;
+                //mark group as inactive
+                group.active = false;
+                //add to spam groups
+                spam_groups.push(group);
+            }
+        }
+    }
+    //console.log(temp_groups);
+    //console.log('\n');
 }
 
 /**Filters out expired MessageGroups.*/
-function checkMessageGroups() {
+function filterMessageGroups() {
+    //get current time in ms
     const current_time = new Date().getTime();
-    message_groups.forEach((group, id) => {
-        //milliseconds passed since group was created
-        const active_time = current_time - group.updated_timestamp;
+    //only keep groups that have not "expired" (time passed since last update over expiration time)
+    const f = group => (current_time - group.updated_timestamp) <= group.expiration_time;
 
-        //if active time is greater than 30, 60 or 90 seconds depending on reached threshold
-        const expired = active_time > group.expiration_time;
-
-        //delete groups that did not reach the warning threshold and are beyond expiration time OR any groups that are older than 24 hours
-        if (!group.warn_exceeded && expired || active_time > 86400000)
-            message_groups.delete(id);
-        //otherwise- group reached warning threshold, but is beyond expiration time
-        else if (expired)
-            group.active = false;
-    });
+    temp_groups = temp_groups.filter(f);
+    spam_groups = spam_groups.filter(f);
 }
 
 module.exports = {
-    getMessageGroup,
+    getMessageGroupById,
+    getMessageGroupByContent,
     addToMessageGroups,
-    checkMessageGroups
+    filterMessageGroups
 };
