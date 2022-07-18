@@ -7,8 +7,8 @@ module.exports = {
      */
 	async execute(interaction) {
         const args = interaction.customId.split('|');
-        const next = args[1] === 'next';
-        const entry_id = args[2];
+        const entry_id = args[1];
+        const offset = parseInt(args[2], 10) ?? 0;
 
         //get select menu
         const select_menu_row = interaction.message.components?.at(0);
@@ -25,7 +25,7 @@ module.exports = {
             channel_id: channel_id,
             selected_sort_value: selected_sort?.value,
             entry_id: entry_id,
-            next: next
+            offset: offset
         });
 	}
 };

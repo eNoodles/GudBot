@@ -1,7 +1,7 @@
 const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection, Message, MessageSelectMenu, CommandInteraction, ButtonInteraction, SelectMenuInteraction } = require("discord.js");
 const { Model } = require('sequelize');
-const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, trimWhitespace, addEllipsisDots, getUnixTimestamp, createErrorEmbed, logUnlessUnknown, getCachedChannel } = require("../utils");
+const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, addEllipsisDots, getUnixTimestamp, createErrorEmbed, logUnlessUnknown, getCachedChannel } = require("../utils");
 const { starboard } = require('../database/dbObjects');
 
 const star_count = 2;
@@ -81,7 +81,7 @@ async function createStarboardEmbed(message, count) {
     const file_links = generateFileLinks(message);
 
     //make sure content isn't over 4092 chars
-    content = trimWhitespace(content);
+    content = content.trim();
     //the actual limit is 4096 but we want to account for possible linebreaks and dots
     const max_length = 4089 - file_links.length;
     if (content.length > max_length) {
@@ -203,9 +203,9 @@ async function updateStarboard(reaction, user) {
  * @param {string} [channel_id] ID of channel for which to filter starboard entries
  * @param {string} selected_sort_value Select Menu's selected option value
  * @param {number} entry ID of entry relative to which to get previous/next entry
- * @param {boolean} next True if looking for next entry, false if looking for previous
+ * @param {number} offset Offset index of entry by this much {+1|0|-1}
  */
-async function getNextEntry(user_id, channel_id, selected_sort_value, entry_id, next) {
+async function getRelativeEntry(user_id, channel_id, selected_sort_value, entry_id, offset) {
     //make sure cache has all entries from database
     if (!is_cache_uptodate) {
         const entries = await starboard.findAll();
@@ -260,6 +260,7 @@ async function getNextEntry(user_id, channel_id, selected_sort_value, entry_id, 
     }
 
     //comparator function for sorting by highest star count
+    //if we dont want to sort by top, function will always return 0 to keep order the same
     const sort_top = top ? (a,b) => b.count - a.count : () => 0;
 
     //filter and sort cache, convert to array
@@ -279,19 +280,21 @@ async function getNextEntry(user_id, channel_id, selected_sort_value, entry_id, 
 
     //find index of given entry among sorted array
     let index = entry_id ? sorted.findIndex(entry => entry.id === entry_id) : -1;
-    //get index of next or previous entry
-    index += next ? 1 : -1;
+    //get index of next/previous/current entry
+    index += offset;
 
     //clamp index within array size
     index = Math.min(Math.max(index, 0), sorted.length - 1);
 
     //if entry isn't found, the index will either be 
     //-1 - 1 = -2, which gets clamped to 0
+    //-1 + 0 = -1, which gets clamped to 0
     //-1 + 1 = 0
     //either way we get 0, the first element of the array
 
     return {
-        entry: sorted[index], //next/previous entry
+        entry: sorted[index], //next/previous/current entry
+        index: index, //to display # button
         is_first: index === 0, //if entry is first (disable prev button)
         is_last: index === sorted.length - 1 //if entry is last (disable next button)
     };
@@ -299,13 +302,12 @@ async function getNextEntry(user_id, channel_id, selected_sort_value, entry_id, 
 
 /**
  * @param {CommandInteraction|ButtonInteraction|SelectMenuInteraction} interaction 
- * @param {{ user_id: string; channel_id: string; selected_sort_value: string; entry_id: number; next: boolean; }} starboard_options
+ * @param {{ user_id: string; channel_id: string; selected_sort_value: string; entry_id: number; offset: number; }} starboard_options
  */
 async function updateStarboardViewer(interaction, starboard_options = {}) {
-    const { user_id, channel_id } = starboard_options;
+    const { user_id, channel_id, entry_id } = starboard_options;
     const selected_sort_value = starboard_options.selected_sort_value ?? 'newest';
-    const entry_id = starboard_options.entry_id ?? 0;
-    const next = starboard_options.next ?? true;
+    const offset = starboard_options.offset ?? 0;
 
     //reply to command (initial use), update if clicked button or select menu
     const replyOrUpdate = interaction.isCommand() ? 
@@ -313,13 +315,7 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
         (...args) => interaction.update(...args);
 
     //get first starboard entry
-    const { entry, is_first, is_last } = await getNextEntry(user_id, channel_id, selected_sort_value, entry_id, next);
-
-    //refresh button for retrying to fetch starboard entries
-    const refresh_button = new MessageButton()
-        .setEmoji('🔄')
-        .setStyle(ButtonStyle.Primary)
-        .setCustomId(`starboardRefresh`);
+    const { entry, index, is_first, is_last } = await getRelativeEntry(user_id, channel_id, selected_sort_value, entry_id, offset);
 
     //select menu for sorting options
     const sort_select = new MessageSelectMenu()
@@ -351,10 +347,17 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
             return option;
         }));
 
+    //refresh button for retrying to fetch starboard entries
+    const refresh_button = new MessageButton()
+        //.setEmoji('🔄')
+        .setLabel('⟳')
+        .setStyle(ButtonStyle.Secondary)
+        .setCustomId(`starboardNavigate|${entry?.id ?? ''}|0`);
+
     //invalid entry, most likely the cache is empty
     if (!entry) {
         await replyOrUpdate({
-            embeds: [createErrorEmbed('No starboard entry found.')],
+            embeds: [createErrorEmbed('No starboard entry found.', 'Try changing the sorting options.')],
             components: [
                 new MessageActionRow().addComponents([sort_select]),
                 new MessageActionRow().addComponents([refresh_button])
@@ -397,18 +400,25 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
     const prev_button = new MessageButton()
         .setEmoji('◀️')
         .setStyle(ButtonStyle.Primary)
-        .setCustomId(`starboardNavigate|prev|${entry.id}`)
+        .setCustomId(`starboardNavigate|${entry.id}|-1`)
         .setDisabled(is_first);
 
     const next_button = new MessageButton()
         .setEmoji('▶️')
         .setStyle(ButtonStyle.Primary)
-        .setCustomId(`starboardNavigate|next|${entry.id}`)
+        .setCustomId(`starboardNavigate|${entry.id}|1`)
         .setDisabled(is_last);
+
+    //display relative #
+    const index_button = new MessageButton()
+        .setLabel(`${index + 1}`) //index starts at 0 but we want display to start at 1
+        .setStyle(ButtonStyle.Primary)
+        .setCustomId(`starboardIndex`)
+        .setDisabled();
 
     //url button to original message
     const link_button = new MessageButton()
-        .setLabel('Open')
+        .setLabel(`Open`)
         .setStyle(ButtonStyle.Link)
         .setURL(entry.url);
 
@@ -416,7 +426,7 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
         embeds: [embed],
         components: [
             new MessageActionRow().addComponents([sort_select]),
-            new MessageActionRow().addComponents([prev_button, next_button, link_button])
+            new MessageActionRow().addComponents([prev_button, index_button, next_button, link_button, refresh_button])
         ],
         ephemeral: true
     });
