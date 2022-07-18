@@ -1,7 +1,7 @@
 const { cacheJailData, checkJailCache } = require('../managers/jailManager');
 const { generateBlacklist, generateWhitelists } = require('../managers/censorManager');
 const { ids, cacheChannels, getCachedChannel } = require('../utils');
-const { checkMessageGroups } = require('../managers/spamManager');
+const { filterMessageGroups } = require('../managers/spamManager');
 
 module.exports = {
 	once: true,
@@ -28,8 +28,8 @@ module.exports = {
 				//unjail members whose release time has been reached
 				checkJailCache();
 
-				//delete/deactivate MessageGroups that have expired
-				checkMessageGroups();
+				//delete MessageGroups that have expired
+				filterMessageGroups();
 			}
 			catch (e) {
 				console.error(e);

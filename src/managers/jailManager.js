@@ -2,7 +2,7 @@ const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection } = require('discord.js');
 const { Model } = require('sequelize');
 const { Op, jail_records, jailed_roles} = require('../database/dbObjects');
-const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, trimWhitespace, findLastSpaceIndex, addEllipsisDots, logUnlessUnknown, getCachedChannel } = require('../utils');
+const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, addEllipsisDots, logUnlessUnknown, getCachedChannel } = require('../utils');
 
 /**
  * K: record ID
@@ -610,7 +610,7 @@ async function createDeletedMessageEmbed(message) {
     const file_links = generateFileLinks(message);
 
     //make sure content isn't over 2000 chars
-    content = trimWhitespace(content);
+    content = content.trim();
     //the actual limit is 4096, but I don't want these to be too long as the limit for all embeds in a message is only 6000
     const max_length = 2000 - file_links.length;
     if (content.length > max_length) {

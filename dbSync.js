@@ -20,7 +20,10 @@ for (const file of model_files) {
 
 const force = process.argv.includes('-f');
 
-sequelize.sync({ force }).then(() => {
-	console.log('Database synced');
-	sequelize.close();
-}).catch(console.error);
+sequelize
+    .sync({ force })
+    .then(() => {
+        console.log('Database synced');
+        sequelize.close();
+    })
+    .catch(console.error);

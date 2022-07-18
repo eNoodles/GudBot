@@ -1,5 +1,5 @@
 const { ButtonInteraction, TextInputComponent, MessageActionRow, Modal } = require('discord.js');
-const { getMessageGroup } = require('../../managers/spamManager');
+const { getMessageGroupById } = require('../../managers/spamManager');
 const { createErrorEmbed } = require('../../utils');
 
 module.exports = {
@@ -9,7 +9,7 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const group_id = args[1];
-        const group = getMessageGroup(group_id);
+        const group = getMessageGroupById(group_id);
 
         if (!group) {
             await interaction.reply({

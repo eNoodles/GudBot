@@ -1,4 +1,4 @@
-const { ButtonStyle } = require('discord-api-types/v10');
+const { ButtonStyle, PermissionFlagsBits } = require('discord-api-types/v10');
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { CommandInteraction, MessageButton, MessageActionRow, MessageEmbed } = require('discord.js');
 const { colors } = require('../../utils');
@@ -7,7 +7,7 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('send')
         .setDescription('test')
-        .setDefaultMemberPermissions(0) //admin only
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption(option => option
             .setName('text')
             .setDescription('Message content to be sent')

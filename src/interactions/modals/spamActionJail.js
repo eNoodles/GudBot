@@ -1,5 +1,5 @@
 const { MessageEmbed, ModalSubmitInteraction } = require('discord.js');
-const { getMessageGroup } = require('../../managers/spamManager');
+const { getMessageGroupById } = require('../../managers/spamManager');
 const { createErrorEmbed, getDurationSeconds, colors } = require('../../utils');
 
 module.exports = {
@@ -9,7 +9,7 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const group_id = args[1];
-        const group = getMessageGroup(group_id);
+        const group = getMessageGroupById(group_id);
 
         if (!group) {
             await interaction.reply({
@@ -32,11 +32,14 @@ module.exports = {
         group.jail.active = true;
         group.jail.user_id = interaction.user.id;
         
-        await group.update();
+        await group.handleSpam();
 
         const embed = new MessageEmbed()
-            .setTitle('"Jail" action taken')
-            .setDescription('All current and future senders corresponding to this group will be jailed.')
+            .setTitle('Jail action taken')
+            .setDescription(group.active ? 
+                'All current and future senders corresponding to this group will be jailed.' :
+                'All senders corresponding to this group have been jailed.'
+            )
             .setColor(colors.green);
 
         await interaction.reply({

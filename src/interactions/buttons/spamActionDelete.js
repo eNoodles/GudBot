@@ -1,5 +1,5 @@
 const { ButtonInteraction, MessageEmbed } = require('discord.js');
-const { getMessageGroup } = require('../../managers/spamManager');
+const { getMessageGroupById } = require('../../managers/spamManager');
 const { createErrorEmbed, colors } = require('../../utils');
 
 module.exports = {
@@ -9,7 +9,7 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const group_id = args[1];
-        const group = getMessageGroup(group_id);
+        const group = getMessageGroupById(group_id);
 
         if (!group) {
             await interaction.reply({
@@ -22,11 +22,15 @@ module.exports = {
 
         group.delete.active = true;
         group.delete.user_id = interaction.user.id;
-        await group.update();
+        await group.handleSpam();
 
         const embed = new MessageEmbed()
-            .setTitle('"Delete" action taken')
-            .setDescription('All current and future messages corresponding to this group will be deleted.')
+            .setTitle('Delete action taken')
+            .setDescription(
+                group.active ? 
+                    'All current and future messages corresponding to this group will be deleted.' :
+                    'All messages corresponding to this group have been deleted.'
+            )
             .setColor(colors.red);
 
         await interaction.reply({

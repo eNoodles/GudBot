@@ -1,5 +1,5 @@
 const { ButtonInteraction, MessageEmbed } = require('discord.js');
-const { getMessageGroup } = require('../../managers/spamManager');
+const { getMessageGroupById } = require('../../managers/spamManager');
 const { createErrorEmbed, colors } = require('../../utils');
 
 module.exports = {
@@ -9,7 +9,7 @@ module.exports = {
 	async execute(interaction) {
         const args = interaction.customId.split('|');
         const group_id = args[1];
-        const group = getMessageGroup(group_id);
+        const group = getMessageGroupById(group_id);
 
         if (!group) {
             await interaction.reply({
@@ -22,11 +22,11 @@ module.exports = {
 
         group.ignore.active = true;
         group.ignore.user_id = interaction.user.id;
-        await group.update();
+        await group.handleSpam();
 
         const embed = new MessageEmbed()
-            .setTitle('"Ignore" action taken')
-            .setDescription('All previous and subsequent actions will be disregarded. No deleting, no jailing, no banning. Do note, however, that this does not reverse actions that have already taken effect.')
+            .setTitle('Ignore action taken')
+            .setDescription('All previous and subsequent spam actions will be disregarded. No deleting, no jailing, no banning. Do note, however, that this does not reverse actions that have already taken effect.')
             .setColor(colors.gray);
 
         await interaction.reply({

@@ -1,4 +1,5 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
+const { PermissionFlagsBits } = require('discord-api-types/v10');
 const { CommandInteraction, MessageEmbed } = require('discord.js');
 const { blacklist, whitelist } = require('../../database/dbObjects');
 const { generateBlacklist, generateWhitelists } = require('../../managers/censorManager');
@@ -8,7 +9,7 @@ module.exports = {
     data: new SlashCommandBuilder()
         .setName('censor')
         .setDescription('Manage server censorship.')
-        .setDefaultMemberPermissions(0) //admin only
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addSubcommandGroup(group => group
             .setName('blacklist')
             .setDescription('Commands for managing blacklisted words.')
