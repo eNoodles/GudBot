@@ -1,6 +1,6 @@
-const { ButtonInteraction, TextInputComponent, MessageActionRow, Modal } = require('discord.js');
+const { ButtonInteraction, TextInputComponent, MessageActionRow, Modal, MessageEmbed } = require('discord.js');
 const { getMessageGroupById } = require('../../managers/spamManager');
-const { createErrorEmbed } = require('../../utils');
+const { createErrorEmbed, colors } = require('../../utils');
 
 module.exports = {
     /**
@@ -14,6 +14,34 @@ module.exports = {
         if (!group) {
             await interaction.reply({
                 embeds: [createErrorEmbed(`Message Group \`#${group_id}\` has expired.`)],
+                ephemeral: true
+            });
+
+            return;
+        }
+
+        if (group.ignore_action.active) {
+            const embed = new MessageEmbed()
+                .setTitle('Cannot override Ignore action')
+                .setDescription(`<@${group.ignore_action.user_id}> has activated the Ignore action for this Message Group.`)
+                .setColor(colors.gray);
+
+            await interaction.reply({
+                embeds: [embed],
+                ephemeral: true
+            });
+
+            return;
+        }
+
+        if (group.jail_action.user_id) {
+            const embed = new MessageEmbed()
+                .setTitle('Action already taken')
+                .setDescription(`<@${group.jail_action.user_id}> has already activated the Jail action for this Message Group.`)
+                .setColor(colors.green);
+
+            await interaction.reply({
+                embeds: [embed],
                 ephemeral: true
             });
 

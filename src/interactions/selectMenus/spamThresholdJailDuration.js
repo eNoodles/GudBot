@@ -7,22 +7,20 @@ module.exports = {
      */
     async execute(interaction) {
         //get currently selected jail duration
-        const selected_jail_value = interaction.values[0];
+        const extra_value = interaction.values[0];
         
         //get preserved args
         const args = interaction.customId.split('|');
-        const selected_type_value = args[1];
-        const selected_message_value = args[2];
-        const selected_channel_value = args[3];
-        //args[4] is old selected_jail_value
-        const selected_ban_value = args[5];
+        const type_value = args[1];
+        const message_value = args[2];
+        const channel_value = args[3];
+        //args[4] is old extra_value
         
         await updateThresholdPrompt(interaction, {
-            selected_type_value: selected_type_value,
-            selected_message_value: selected_message_value,
-            selected_channel_value: selected_channel_value,
-            selected_jail_value: selected_jail_value,
-            selected_ban_value: selected_ban_value
+            type_value: type_value,
+            message_value: message_value,
+            channel_value: channel_value,
+            extra_value: extra_value
         });
     }
 };

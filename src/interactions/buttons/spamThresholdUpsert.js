@@ -9,18 +9,17 @@ module.exports = {
      */
 	async execute(interaction) {
         const args = interaction.customId.split('|');
-        const selected_type_value = args[1];
-        const selected_message_value = parseInt(args[2], 10);
-        const selected_channel_value = parseInt(args[3], 10);
-        const selected_jail_value = parseInt(args[4], 10);
-        const selected_ban_value = parseInt(args[5], 10);
+        const type_value = args[1];
+        const message_value = parseInt(args[2], 10);
+        const channel_value = parseInt(args[3], 10);
+        const extra_value = parseInt(args[4], 10);
 
         const entry = await thresholds.upsert({
-            type: selected_type_value,
+            type: type_value,
             set_by: interaction.user.id,
-            message_count: selected_message_value,
-            channel_count: selected_channel_value,
-            extra: selected_jail_value ?? selected_ban_value
+            message_count: message_value,
+            channel_count: channel_value,
+            extra: extra_value
         });
 
         if (!entry) {

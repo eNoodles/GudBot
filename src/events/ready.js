@@ -1,7 +1,7 @@
 const { cacheJailData, checkJailCache } = require('../managers/jailManager');
 const { generateBlacklist, generateWhitelists } = require('../managers/censorManager');
+const { filterMessageGroups, generateThresholds } = require('../managers/spamManager');
 const { ids, cacheChannels, getCachedChannel } = require('../utils');
-const { filterMessageGroups } = require('../managers/spamManager');
 
 module.exports = {
 	once: true,
@@ -11,7 +11,12 @@ module.exports = {
 		generateBlacklist();
 		generateWhitelists();
 
+		//generate action thresholds for spam manager
+		//no need to await, exceptions are handled locally within method
+		generateThresholds();
+
 		//cache all channels from utils#ids
+		//await before proceeding since cached channels are needed
 		await cacheChannels(client);
 
 		//fetch last 100 messages from #criminal-records

@@ -20,18 +20,48 @@ module.exports = {
             return;
         }
 
+        if (group.ignore_action.active) {
+            const embed = new MessageEmbed()
+                .setTitle('Cannot override Ignore action')
+                .setDescription(`<@${group.ignore_action.user_id}> has activated the Ignore action for this Message Group.`)
+                .setColor(colors.gray);
+
+            await interaction.reply({
+                embeds: [embed],
+                ephemeral: true
+            });
+
+            return;
+        }
+
+        if (group.jail_action.user_id) {
+            const embed = new MessageEmbed()
+                .setTitle('Action already taken')
+                .setDescription(`<@${group.jail_action.user_id}> has already activated the Jail action for this Message Group.`)
+                .setColor(colors.green);
+
+            await interaction.reply({
+                embeds: [embed],
+                ephemeral: true
+            });
+
+            return;
+        }
+        
+        //configure action
+        group.jail_action.active = true;
+        group.jail_action.user_id = interaction.user.id;
+
+        //this reason and duration will be used for all senders that get jailed
+        group.jail_action.reason = interaction.fields.getTextInputValue('jail_reason');
+
         const minutes = parseInt(interaction.fields.getTextInputValue('jail_minutes'), 10) || 0;
         const hours = parseInt(interaction.fields.getTextInputValue('jail_hours'), 10) || 0;
         const days = parseInt(interaction.fields.getTextInputValue('jail_days'), 10) || 0;
-
-        //this reason and duration will be used for all senders that get jailed
-        group.jail.reason = interaction.fields.getTextInputValue('jail_reason');
         //duration will be checked in jailManager anyway so we dont have to do anything special here
-        group.jail.duration = getDurationSeconds(minutes, hours, days);
+        group.jail_action.duration = getDurationSeconds(minutes, hours, days);
         
-        group.jail.active = true;
-        group.jail.user_id = interaction.user.id;
-        
+        //update embed and take action
         await group.handleSpam();
 
         const embed = new MessageEmbed()

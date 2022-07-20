@@ -9,10 +9,10 @@ module.exports = {
      */
 	async execute(interaction) {
         const args = interaction.customId.split('|');
-        const selected_type_value = args[1];
+        const type_value = args[1];
 
         //returns # of deleted rows
-        const deleted = await thresholds.destroy({ where: { type: selected_type_value } });
+        const deleted = await thresholds.destroy({ where: { type: type_value } });
 
         //if number equals 0
         if (!deleted) {
