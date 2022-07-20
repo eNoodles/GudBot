@@ -135,20 +135,64 @@ function createErrorEmbed(message, footer = 'User satisfaction is not guaranteed
 }
 
 /**
- * @param {number} min 
- * @param {number} max 
- * @returns Array of choices for SlashCommandIntegerOption
+ * @param {number} min Inclusive
+ * @param {number} max Inclusive
+ * @returns Array of integer choices for SlashCommandIntegerOption
  */
-function generateIntegerChoices(min=0, max=9) {
+function generateIntegerChoices(min = 0, max = 9) {
     const temp_array = [];
     const iterations = max - min;
 
     for (let i = 0; i <= iterations; i++) {
         let val = min + i;
-        temp_array[i] = { name: `${val}`, value: val };
+        temp_array[i] = {
+            name: `${val}`,
+            value: val
+        };
     }
 
     return temp_array;
+}
+
+/**
+ * @param {number} min Inclusive
+ * @param {number} max Inclusive
+ * @param {string} prefix Add prefix message to options' label
+ * @param {number} default_value Which integer to set as default
+ * @returns Array of integer options for MessageSelectOptionData
+ */
+function generateIntegerOptions(min = 0, max = 9, prefix = '', default_value) {
+    const temp_array = [];
+    const iterations = max - min;
+
+    for (let i = 0; i <= iterations; i++) {
+        let val = `${min + i}`;
+        temp_array[i] = {
+            label: `${prefix}${val}`,
+            value: val,
+            default: val === `${default_value}`
+        };
+    }
+
+    return temp_array;
+}
+
+/**
+ * @param {Message} message Message to get Select Menu from
+ * @param {string} id Select Menu's customId (just the name without arguments)
+ */
+function getSelectMenuById(message, id) {
+    const action_rows = message.components;
+    for (let i = 0; i < action_rows.length; i++) {
+        const row_components = action_rows[i].components;
+
+        for (let j = 0; j < row_components.length; j++) {
+            const c = row_components[j];
+            
+            if (c.type === 'SELECT_MENU' && c.customId.startsWith(id))
+                return c;
+        }
+    }
 }
 
 /**
@@ -264,6 +308,8 @@ module.exports = {
     getMemberFullName,
     createErrorEmbed,
     generateIntegerChoices,
+    generateIntegerOptions,
+    getSelectMenuById,
     getDurationSeconds,
     extractImageUrls,
     findLastSpaceIndex,
