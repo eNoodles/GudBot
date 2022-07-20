@@ -284,9 +284,9 @@ module.exports = {
                 let desc = '**Blacklist:**\n';
 
                 //added_by is the id of the user that added the word
-                blacklist_entries.forEach(entry => {
-                    desc += `\`${entry.word}\` - added by <@${entry.added_by}>\n`;
-                });
+                blacklist_entries.forEach(entry => 
+                    desc += `\`${entry.word}\` - added by <@${entry.added_by}>\n`
+                );
 
                 //if no words found in blacklist table
                 if (blacklist_entries?.length === 0) {
@@ -295,9 +295,9 @@ module.exports = {
 
                 //same thing for whitelist
                 desc += '\n**Whitelist:**\n';
-                whitelist_entries.forEach(entry => {
-                    desc += `<${entry.type}${entry.id}> - added by <@${entry.added_by}>\n`;
-                });
+                whitelist_entries.forEach(entry => 
+                    desc += `<${entry.type}${entry.id}> - added by <@${entry.added_by}>\n`
+                );
 
                 if (whitelist_entries?.length === 0) {
                     desc += 'Nothing found.';

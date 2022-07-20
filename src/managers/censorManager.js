@@ -61,24 +61,27 @@ let whitelisted_roles = [];
  * Finds all whitelist table entries and filters them into corresponding caches
  */
 function generateWhitelists() {
-    whitelist.findAll().then(entries => {
-        whitelisted_users = [];
-        whitelisted_roles = [];
-        whitelisted_channels = [];
+    whitelist
+        .findAll()
+        .then(entries => {
+            whitelisted_users = [];
+            whitelisted_roles = [];
+            whitelisted_channels = [];
 
-        entries.forEach(entry => {
-            switch (entry.type) {
-                case '@':
-                    whitelisted_users.push(entry.id);
-                    break;
-                case '@&':
-                    whitelisted_roles.push(entry.id);
-                    break;
-                case '#':
-                    whitelisted_channels.push(entry.id);
-            }
-        });
-    }).catch(console.error);
+            entries.forEach(entry => {
+                switch (entry.type) {
+                    case '@':
+                        whitelisted_users.push(entry.id);
+                        break;
+                    case '@&':
+                        whitelisted_roles.push(entry.id);
+                        break;
+                    case '#':
+                        whitelisted_channels.push(entry.id);
+                }
+            });
+        })
+        .catch(console.error);
 }
 
 /**

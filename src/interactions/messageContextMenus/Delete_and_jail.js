@@ -38,9 +38,9 @@ module.exports = {
                 if (found_members) {
                     embed_desc += '\n\n**Perhaps you would like to jail:**\n';
 
-                    found_members.forEach(member => {
-                        embed_desc += `<@${member.id}>\n`;
-                    });
+                    found_members.forEach(member => 
+                        embed_desc += `<@${member.id}>\n`
+                    );
                 }
 
                 await interaction.reply({
