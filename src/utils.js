@@ -214,7 +214,7 @@ function extractImageUrls(content) {
     const urls = [];
 
     //find image urls (including surrounding whitespace), add the url itself to array and replace entire match with nothing
-    content = content.replace(/\s*(https?:\/\/\S+\.(?:png|jpg|jpeg|webp|gif)\S*)\s*/ig, (match, url) => {
+    content = content.replace(/\s*(https?:\/\/\w{2,}\S+\.(?:png|jpg|jpeg|webp|gif)\S*)\s*/ig, (match, url) => {
         urls.push(url);
         found = true;
         return '';
@@ -237,11 +237,11 @@ function findLastSpaceIndex(text, max_length) {
 }
 
 /**
- * If string ends with whitespace and no punctuation, replace that whitespace with '...'
+ * If string ends with whitespace and no punctuation, replace that whitespace with '…' (like ... but single char)
  * @param {string} text 
  */
 function addEllipsisDots(text) {
-    return text.replace(/(\w)\s*$/, (match, last_w) => `${last_w}...`);
+    return text.replace(/(\w)\s*$/, (match, last_w) => `${last_w}…`);
 }
 
 /**
@@ -261,7 +261,7 @@ function getGuildUploadLimit(guild) {
 function prependFakeReply(content, replied_msg, max_length=200) {
     if (replied_msg) {
         //remove fake reply from replied_msg if it had one (we don't want fake reply chaining)
-        let reply_content = replied_msg.content.replace(/> \[[\S\s]+\]\(http.+\)\n/, '');
+        let reply_content = replied_msg.content.replace(/^> \[[\S\s]+\]\(http.+\)\n/, '');
         //if there is no message content, then it must have been an attachment-only message
         reply_content = reply_content || '*Click to see attachment*'; //🖻🗎
         //make sure it's not too long
