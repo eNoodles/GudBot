@@ -4,7 +4,7 @@ const { Model } = require('sequelize');
 const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, addEllipsisDots, getUnixTimestamp, createErrorEmbed, logUnlessUnknown, getCachedChannel } = require("../utils");
 const { starboard } = require('../database/dbObjects');
 
-const star_count = 2;
+const star_count = 3;
 
 /**
  * K: original_id
@@ -111,10 +111,10 @@ async function updateStarboard(reaction, user) {
     const { message, count } = reaction;
 
     //no self starring
-    // if (user.id === message.author.id) {
-    //     await reaction.users.remove(user.id);
-    //     return;
-    // }
+    if (user.id === message.author.id) {
+        await reaction.users.remove(user.id);
+        return;
+    }
 
     //fetch starboard channel
     const star_channel = getCachedChannel(ids.channels.starboard);
@@ -350,7 +350,8 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
     //refresh button for retrying to fetch starboard entries
     const refresh_button = new MessageButton()
         //.setEmoji('🔄')
-        .setLabel('⟳')
+        //.setLabel('⟳')
+        .setEmoji('1000425855199232000')
         .setStyle(ButtonStyle.Secondary)
         .setCustomId(`starboardNavigate|${entry?.id ?? ''}|0`);
 
@@ -398,13 +399,15 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
 
     //navigational buttons
     const prev_button = new MessageButton()
-        .setEmoji('◀️')
+        //.setEmoji('◀️')
+        .setEmoji('1000438084225212437')
         .setStyle(ButtonStyle.Primary)
         .setCustomId(`starboardNavigate|${entry.id}|-1`)
         .setDisabled(is_first);
 
     const next_button = new MessageButton()
-        .setEmoji('▶️')
+        //.setEmoji('▶️')
+        .setEmoji('1000438069993934951')
         .setStyle(ButtonStyle.Primary)
         .setCustomId(`starboardNavigate|${entry.id}|1`)
         .setDisabled(is_last);
