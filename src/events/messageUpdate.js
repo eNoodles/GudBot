@@ -16,7 +16,7 @@ module.exports = {
             //if anyone tries to be a smartass and edit in uncensored words, just delete the message
             //check whitelist and make sure regexp isnt empty
             if (!checkWhitelists(new_message) && regexp.source !== '(?:)' && new_message.content.match(regexp)) {
-                new_message.delete();
+                new_message.delete().catch(console.error);
             }
         }
 	}
