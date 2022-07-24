@@ -419,7 +419,7 @@ async function getJailDataByRecord(record_resolvable) {
         //make sure record is valid
         if (validateRecord(record)) {
             //fetch message #criminal-records
-            const regexp = record.url.match(/(\d+)$/);
+            const regexp = record.url.match(/([0-9]+)$/);
             const message_id = regexp[1];
             const message = await getCachedChannel(ids.channels.records).messages.fetch(message_id);
             //fetch guild member
@@ -466,7 +466,7 @@ async function getJailDataByMember(member, active = true) {
             //fetch member's saved roles if he exists (it's possible he has left the server since being jailed), otherwise use empty array
             const role_entries = member ? await jailed_roles.findAll({ where: { user_id: member.id } }) : [];
             //fetch message from #criminal-records
-            const regexp = record.url.match(/(\d+)$/);
+            const regexp = record.url.match(/([0-9]+)$/);
             const message_id = regexp[1];
             const message = await getCachedChannel(ids.channels.records).messages.fetch(message_id);
             //create new JailData
@@ -507,7 +507,7 @@ async function getJailDataByMessage(message_resolvable, guild) {
             //fetch message from #criminal-records if url was given
             let message = message_resolvable;
             if (is_resolvable_url) {
-                const regexp = url.match(/(\d+)$/);
+                const regexp = url.match(/([0-9]+)$/);
                 const message_id = regexp[1];
                 message = await getCachedChannel(ids.channels.records).messages.fetch(message_id);
             }
