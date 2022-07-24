@@ -1,9 +1,7 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
-const { CommandInteraction, MessageEmbed, MessageButton, MessageActionRow } = require('discord.js');
-const { thresholds } = require('../../database/dbObjects');
+const { CommandInteraction, MessageButton, MessageActionRow } = require('discord.js');
 const { generateThresholdsEmbed } = require('../../managers/spamManager');
-const { colors } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
