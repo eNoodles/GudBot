@@ -20,6 +20,7 @@ module.exports = {
                     .setName('word')
                     .setDescription('Word (string or regular expression) that you want to be censored.')
                     .setRequired(true)
+                    .setAutocomplete(true)
                 )
             )
             .addSubcommand(subcommand => subcommand
@@ -76,30 +77,73 @@ module.exports = {
 
         switch (`${subcommand_group}${subcommand}`) {
             case 'blacklistadd': {
-                let word = options.getString('word');
+                const word = options.getString('word');
 
                 //make sure string isn't too short or too long
                 if (word.length < 3 || word.length > 50) {
                     await interaction.reply({
-                        embeds: [createErrorEmbed(`Please enter a string between 3 - 50 characters.`)], 
+                        embeds: [createErrorEmbed(`\`\`\`${word}\`\`\`<:error:1000033728531267615> Please enter a String or Regular Expression between 3 - 50 characters.`, '')], 
                         ephemeral: true
                     });
                     return;
                 }
+                
+                //check if regexp contains unsupported characters
 
-                //no whitespace
-                if (word.match(/\s/)) {
+                //first remove supported characters and save their indexes
+                const reinsert_indexes = [];
+                const remove_allowed = word.replace(/\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??|\|/g, (match, index) => {
+                    //save index for each char (ex: '(?:' )
+                    for (let i = 0; i < match.length; i++) reinsert_indexes.push(index + i);
+                    return '';
+                });
+
+                let found_unsupported = false;
+                //check for unsupported characters, if found- replace with ^ pointer
+                let unsupported = remove_allowed.replace(/(?<=\\)[A-Za-z]|[^A-Za-z]/g, (match) => {
+                    found_unsupported = true;
+                    return '^';
+                });
+
+                //if unsupported chars found
+                if (found_unsupported) {
+                    //replace everything but ^ pointers with spaces
+                    unsupported = unsupported.replace(/[^^]/g, ' ');
+                    //insert spaces where supported chars that were previously removed were
+                    for (let i = 0; i < reinsert_indexes.length; i++) unsupported = unsupported.substring(0, reinsert_indexes[i]) + ' ' + unsupported.substring(reinsert_indexes[i]);
+
+                    //explain to user what regexp classes are supported
+                    const allowed_info = 
+                        'a-z'.padEnd(12) + 'Latin alphabet\n' + 
+                        '[abc]'.padEnd(12) + 'Character sets\n' + 
+                        '[^abc]'.padEnd(12) + 'Negated character sets\n' + 
+                        '[a-c]'.padEnd(12) + 'Character ranges\n' + 
+                        '(?:abc)'.padEnd(12) + 'Non-capturing groups\n' + 
+                        '(?:a|b)'.padEnd(12) + 'Alternatives within non-capturing groups\n' + 
+                        '(?=abc)'.padEnd(12) + 'Positive lookahead\n' + 
+                        '(?<=abc)'.padEnd(12) + 'Positive lookbehind\n' + 
+                        '(?!abc)'.padEnd(12) + 'Negative lookahead\n' + 
+                        '(?<!abc)'.padEnd(12) + 'Negative lookbehind\n' + 
+                        'a* a+ a?'.padEnd(12) + 'Quantifiers: 0 or more, 1 or more, 0 or 1\n' + 
+                        'a{n}'.padEnd(12) + 'Quantifiers: Exactly n (single digits)\n' + 
+                        'a{n,}'.padEnd(12) + 'Quantifiers: n or more (single digits)\n' + 
+                        'a{n,m}'.padEnd(12) + 'Quantifiers: Between n & m (single digits)\n' + 
+                        'a+? a{n}?'.padEnd(12) + 'Lazy quantifiers\n';
+
+                    //notify user
+                    const embed = new MessageEmbed()
+                        .setTitle('Unsupported characters detected')
+                        .setDescription(`\`\`\`\n${word}\n${unsupported}\`\`\`\nYour String or Regular Expression may only contain:\`\`\`${allowed_info}\`\`\`\n<:error:1000033728531267615> Please note that homoglyphs (different characters that are visually similar), numerical substitutes, fonts, etc. are handled internally by the censoring algorithm. It is also case insensitive.`)
+                        .setColor(colors.red);
+
                     await interaction.reply({
-                        embeds: [createErrorEmbed(`String must not contain whitespace (spaces, linebreaks, tabs).`)], 
+                        embeds: [embed], 
                         ephemeral: true
                     });
                     return;
                 }
 
-                //make sure there are no capture groups
-                word = word.replace(/\((?!\?:)/g, '(?:');
-
-                //make sure it's a valid regexp
+                //make sure it's a valid regexp just in case
                 try {
                     new RegExp(word);
                 }
@@ -112,6 +156,7 @@ module.exports = {
                     return;
                 }
 
+                //create entry, make sure it's not a duplicate
                 const entry = await blacklist.create({
                     word: word,
                     added_by: user.id
@@ -140,21 +185,12 @@ module.exports = {
                 break;
             }
             case 'blacklistremove': {
-                let word = options.getString('word');
+                const word = options.getString('word');
 
                 //make sure string isn't too short or too long
                 if (word.length < 3 || word.length > 50) {
                     await interaction.reply({
-                        embeds: [createErrorEmbed(`Please enter a string between 3 - 50 characters.`)], 
-                        ephemeral: true
-                    });
-                    return;
-                }
-
-                //no whitespace
-                if (word.match(/\s/)) {
-                    await interaction.reply({
-                        embeds: [createErrorEmbed(`String must not contain whitespace (spaces, linebreaks, tabs).`)], 
+                        embeds: [createErrorEmbed(`\`\`\`${word}\`\`\`<:error:1000033728531267615> Please enter a String or Regular Expression between 3 - 50 characters.`, '')], 
                         ephemeral: true
                     });
                     return;
@@ -195,7 +231,7 @@ module.exports = {
                 // @ - user (@! also works but the ! is omitted)
                 //@& - role
                 // # - channel
-                const regexp = mentionable.match(/<(@&?|#)!?(\d+)>/);
+                const regexp = mentionable.match(/^<(@&?|#)!?([0-9]+)>/);
                 
                 if (!regexp) {
                     await interaction.reply({
@@ -239,7 +275,7 @@ module.exports = {
 
                 //match mention of role, user or channel
                 //we dont need the type for this, so it is a non capture group
-                const regexp = mentionable.match(/<(?:@&?|#)!?(\d+)>/);
+                const regexp = mentionable.match(/^<(?:@&?|#)!?([0-9]+)>/);
                 
                 if (!regexp) {
                     await interaction.reply({
