@@ -21,42 +21,26 @@ module.exports = {
             if (fullCommandName === 'censorblacklistadd') {
                 const responses = [];
 
-                //replace character classes with latin alphabet range
-                let fixed = focused_value.replace(/\\w|\\S|\\D|\./g, '[a-z]');
-
-                //replace capturing groups with non capturing ones
-                fixed = fixed.replace(/\((?!\?)/g, '(?:');
-
-                //remove supported characters and save them for reinsertion
-                const reinsertions = [];
-                const remove_allowed = fixed.replace(/\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??|\|/g, (match, index) => {
-                    reinsertions.push({
-                        str: match,
-                        idx: index
-                    });
-                    return '';
-                });
-
-                //remove unsupported characters
-                fixed = remove_allowed.replace(/(?<=\\)[A-Za-z]|[^A-Za-z]/g, '');
-
-                //reinsert supported characters
-                reinsertions.forEach(e => fixed = fixed.substring(0, e.idx) + e.str + fixed.substring(e.idx) );
-
-                //prevent infinite matching, like in 'test|', 'test(|abc)', 'test(ab||cd)'
-                fixed = fixed
+                let fixed = focused_value
+                    //replace character classes with latin alphabet range
+                    .replace(/\\w|\\S|\\D|\./g, '[a-z]')
+                    //replace capturing groups with non capturing ones
+                    .replace(/\((?!\?)/g, '(?:')
+                    //find non-latin-letter characters, keep supported ones, discard others
+                    .replace(/(\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??|\|)|(?:(?<=\\)[A-Za-z]|[^A-Za-z])/g, (match, keep) => keep ? match : '')
+                    //prevent infinite matching, like in 'test|', 'test(|abc)', 'test(ab||cd)'
                     //replace double || with single |
                     .replace(/\|\|/g, '|')
                     //remove | that are at beginning or end of string, or have non latin char next to them
-                    .replace(/^\||\|$|\|(?=[^a-z])|(?<=[^a-z])\|/g, '');
-
-                //replace alternative groups with sets (ex: (?:a|b|c) => [abc] )
-                fixed = fixed.replace(/(?:\((?:\?:)?)?([a-z]+\|[a-z]+(?:\|[a-z]+)*)\)?/g, (match, content) => {
-                    //get individual alternatives (ex: (?:a|b|c) => ['a', 'b', 'c'] )
-                    const alts = content.split('|');
-                    //check if each alt is a single character or a surrogate pair (this is why I use a spread operator)
-                    return alts.every(str => [...str].length === 1) ? `[${alts.join('')}]` : match;
-                });
+                    .replace(/^\||\|$|\|(?=[^a-z])|(?<=[^a-z])\|/g, '')
+                    //replace alternative groups with sets (ex: (?:a|b|c) => [abc] )
+                    .replace(/(?:\((?:\?:)?)?([a-z]+\|[a-z]+(?:\|[a-z]+)*)\)?/g, (match, content) => {
+                        //get individual alternatives (ex: (?:a|b|c) => ['a', 'b', 'c'] )
+                        const alts = content.split('|');
+                        //check if each alt is a single character or a surrogate pair (this is why I use a spread operator)
+                        //I actually dont know why I check for surrogate pairs, since they get removed earlier but whatever
+                        return alts.every(str => [...str].length === 1) ? `[${alts.join('')}]` : match;
+                    });
 
                 //add fixed input to responses
                 responses.push({ name: fixed, value: fixed });
@@ -64,8 +48,27 @@ module.exports = {
                 const suggested = fixed
                     //replace with 's' or '[sz]' found at end of string, add * quantifier (or replace existing)
                     .replace(/(?:s|z|\[sz\]|\[zs\])[*+?]?$/, `[sz]*`)
-                    //remove consecutive chars
-                    .replace(/([a-z])\1+/g, (match, char) => char)
+                    //replace consecutive chars with proper quantifiers
+                    .replace(/([a-z])(\1+)(?:(?:{([0-9])(,?)([0-9]?)}|([*+?]))(\??))?/g, (match, char, extra, min, comma, max, simple, lazy) => {
+                        min = (parseInt(min, 10) || 0) + extra.length + (!min && !simple ? 1 : 0);
+                        max = max ? parseInt(max, 10) + extra.length : comma ? ',' : 0;
+                        switch (simple) {
+                            case '*':
+                                //0 or more
+                                max = ',';
+                                break;
+                            case '+':
+                                //1 or more
+                                min++;
+                                max = ',';
+                                break;
+                            case '?':
+                                //0 or 1
+                                max = max !== ',' ? min + 1 : max;
+                                break;
+                        }
+                        return `${char}{${min}${max === ',' ? max : max ? `,${max}` : ''}}${lazy ?? ''}`;
+                    })
                     //add + to any element without quanitifier (except from first)
                     .replace(/(?<!^)(?:\[\^?(?:[a-z]-[a-z]|[a-z])+\]|[)a-z](?![^\[]*\]))(?!(?:{[0-9],?[0-9]?}|[*+?])\??)/g, match => `${match}+`);
 
@@ -85,14 +88,13 @@ module.exports = {
                 const sources = (await blacklist.findAll() || []).map(e => e.word);
                 if (!sources || sources.length === 0) return;
 
+                const responses = new Set();
+
                 //check if focused value is beginning of actual source string
                 for (let i = 0; i < sources.length; i++) {
                     const source = sources[i];
                     if (source.startsWith(focused_value)) {
-                        await interaction.respond([
-                            { name: source, value: source }
-                        ]);
-                        return;
+                        responses.add(source);
                     }
                 };
 
@@ -108,14 +110,13 @@ module.exports = {
                     const partial_source = `^${source.toLowerCase().replace(/(?<!^)(\[\^?(?:[a-z]-[a-z]|[a-z])+\]|[)a-z])(?:{[0-9],?[0-9]?}|[*+?])?\??/g, (match, element) => `${element}*`)}$`;
                     const regexp = new RegExp(partial_source, 'g');
 
-                    if (focused_value.match(regexp)) {
+                    if (focused_value.search(regexp) > -1) {
                         //display actual source string, not partial regexp source
-                        await interaction.respond([
-                            { name: source, value: source }
-                        ]);
-                        return;
+                        responses.add(source);
                     }
                 }
+
+                await interaction.respond([...responses].map(e => ({ name: e, value: e }) ));
             }
         }
         catch (e) {
