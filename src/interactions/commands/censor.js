@@ -88,30 +88,21 @@ module.exports = {
                     return;
                 }
                 
-                //check if regexp contains unsupported characters
-
-                //first remove supported characters and save their indexes
-                const reinsert_indexes = [];
-                const remove_allowed = word.replace(/\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??|\|/g, (match, index) => {
-                    //save index for each char (ex: '(?:' )
-                    for (let i = 0; i < match.length; i++) reinsert_indexes.push(index + i);
-                    return '';
-                });
-
+                //find all non-latin-letter characters, replace unsupported ones with ^ pointer, keep supported ones
                 let found_unsupported = false;
-                //check for unsupported characters, if found- replace with ^ pointer
-                let unsupported = remove_allowed.replace(/(?<=\\)[A-Za-z]|[^A-Za-z]/g, (match) => {
-                    found_unsupported = true;
-                    return '^';
+                let unsupported = word.replace(/(\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??|\|)|(?:(?<=\\)[A-Za-z]|[^A-Za-z])/g, (match, keep) => {
+                    if (keep) return match;
+                    else {
+                        found_unsupported = true;
+                        return '^';
+                    }
                 });
 
                 //if unsupported chars found
                 if (found_unsupported) {
                     //replace everything but ^ pointers with spaces
                     unsupported = unsupported.replace(/[^^]/g, ' ');
-                    //insert spaces where supported chars that were previously removed were
-                    for (let i = 0; i < reinsert_indexes.length; i++) unsupported = unsupported.substring(0, reinsert_indexes[i]) + ' ' + unsupported.substring(reinsert_indexes[i]);
-
+                    
                     //explain to user what regexp classes are supported
                     const allowed_info = 
                         'a-z'.padEnd(12) + 'Latin alphabet\n' + 
