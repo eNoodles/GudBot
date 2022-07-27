@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
 const { CommandInteraction } = require('discord.js');
 const { fetchPingData } = require('../../managers/pingManager');
-const { createErrorEmbed } = require('../../utils');
+const { createErrorEmbed, ids } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -80,7 +80,7 @@ module.exports = {
 
         //if more than one option entered
         if ([add, remove, cooldown].filter(e => e !== null).length > 1) {
-            let error_desc = '<:error:1000033728531267615> Please enter these commands separately:';
+            let error_desc = `<:error:${ids.emojis.error}> Please enter these commands separately:`;
             if (add) error_desc += `\`\`\`/configping role:<@&${role.id}> add:${add}\`\`\``;
             if (remove) error_desc += `\`\`\`/configping role:<@&${role.id}> remove:${remove}\`\`\``;
             if (cooldown !== null) error_desc += `\`\`\`/configping role:<@&${role.id}> cooldown:${(() => {

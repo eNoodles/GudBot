@@ -209,7 +209,7 @@ class MessageGroup {
         //add/update Actions field
         if (actions_field_str) {
             //get rid of unnecessary linebreak at the end
-            actions_field_str = actions_field_str.trim();
+            //actions_field_str = actions_field_str.trim();
 
             //see if Actions field already exists
             if (embed.fields[2]) {

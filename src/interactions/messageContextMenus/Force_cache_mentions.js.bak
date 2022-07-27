@@ -1,0 +1,78 @@
+const { ContextMenuCommandBuilder } = require('@discordjs/builders');
+const { MessageContextMenuInteraction, MessageEmbed } = require('discord.js');
+const { colors, ids } = require('../../utils');
+
+module.exports = {
+    data: new ContextMenuCommandBuilder()
+        .setName('Force cache mentions')
+        .setType(3),
+
+    /**
+     * @param {MessageContextMenuInteraction} interaction 
+     */
+    async execute(interaction) {
+        const message = interaction.targetMessage;
+        const { embeds } = message;
+
+        const error_desc = 
+            `<:error:${ids.emojis.error}> This command is for force caching mentions that appear as raw IDs in embeds.` + 
+            `\n\nFor example: <@0123456789>\n\nThis is because mentions in embeds are not "real" - they do not actually mention the user/role/channel. ` + 
+            `This means that if you have not came across the mentionable object during your current session, your client (PC, browser, or mobile) will not ` + 
+            `have cached it, and it will appear as raw text in embeds. If you had used this command on a message that contained embeds with mentions, it would've sent an ephemeral response `+ 
+            `containing the parsed mentions, which would have forced your client to cache them.`;
+
+        if (!embeds?.length) {
+            const embed = new MessageEmbed()
+                .setTitle('Message does not contain embeds')
+                .setDescription(error_desc)
+                .setColor(colors.red);
+
+            await interaction.reply({
+                embeds: [embed],
+                ephemeral: true
+            });
+
+            return;
+        }
+
+        let parsed_mentions = [];
+        embeds.forEach(embed => {
+            let mentions = embed.description?.match(/<(?:@&?|#)!?[0-9]+>/g);
+            mentions?.forEach(mention => {
+                if (!parsed_mentions.includes(mention)) parsed_mentions.push(mention)
+            });
+
+            embed.fields?.forEach(field => {
+                mentions = field.value.match(/<(?:@&?|#)!?[0-9]+>/g);
+                mentions?.forEach(mention => {
+                    if (!parsed_mentions.includes(mention)) parsed_mentions.push(mention)
+                });
+            });
+        });
+
+        if (!parsed_mentions?.length) {
+            const embed = new MessageEmbed()
+                .setTitle('Embed does not contain any mentions')
+                .setDescription(error_desc)
+                .setColor(colors.red);
+
+            await interaction.reply({
+                embeds: [embed],
+                ephemeral: true
+            });
+
+            return;
+        }
+
+        const embed = new MessageEmbed()
+            .setTitle(`Found ${parsed_mentions.length} ${parsed_mentions.length === 1 ? 'mention' : 'mentions'}`)
+            .setDescription('These mentions should now be cached in your client\'s memory and will appear properly in embeds.')
+            .setColor(colors.blurple);
+
+        await interaction.reply({
+            content: parsed_mentions.join('\n'),
+            embeds: [embed],
+            ephemeral: true
+        });
+    }
+};
