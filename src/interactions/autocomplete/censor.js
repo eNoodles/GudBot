@@ -6,19 +6,17 @@ module.exports = {
      * @param {AutocompleteInteraction} interaction 
      */
     async execute(interaction) {
-        const { commandName, options } = interaction;
+        const { options } = interaction;
+        const subcommand = options.getSubcommand();
+        const focused = options.getFocused(true);
+        const focused_name = focused?.name;
+        const focused_value = focused?.value.toLowerCase();
 
-        const focused_value = options.getFocused()?.toLowerCase();
         //dont try to autocomplete empty strings
         if (!focused_value) return;
 
-        //get full command name, consisting of main command name, subgroup name, and subcommand name
-        const subcommand_group = options.getSubcommandGroup(false) ?? '';
-        const subcommand = options.getSubcommand() ?? '';
-        const fullCommandName = `${commandName}${subcommand_group}${subcommand}`;
-
         try {
-            if (fullCommandName === 'censorblacklistadd') {
+            if (subcommand === 'blacklist' && focused_name === 'add') {
                 const responses = [];
 
                 let fixed = focused_value
@@ -76,7 +74,7 @@ module.exports = {
 
                 await interaction.respond(responses);
             }
-            else if (fullCommandName === 'censorblacklistremove') {
+            else if (subcommand === 'blacklist' && focused_name === 'remove') {
                 // //get blacklist source, replace inner | of individual regexp sources
                 // const blacklist_source = getBlacklist().source.replace(/(\((?:\?:)?[^|]*?)\|([^|]*?\))/g, (match, p1, p2) => `${p1}__OR__${p2}`);
 
@@ -121,12 +119,12 @@ module.exports = {
         }
         catch (e) {
             console.error(e);
-
             const { message } = e;
-            interaction.respond([
-                { name: message, value: message }
-            ]).catch(console.error);
+            interaction
+                .respond([
+                    { name: message, value: message }
+                ])
+                .catch(console.error);
         }
-        
     }
 };
