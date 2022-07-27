@@ -541,16 +541,20 @@ function checkJailCache() {
 /**
  * Fetches jail records from the past 24 hours, creates JailData for them and caches it.
  */
-async function cacheJailData() {
+function cacheJailData() {
     const current_timestamp = getUnixTimestamp();
-    //fetch records no older than one day
-    const records = await jail_records.findAll({
-        where: {
-            jail_timestamp: { [Op.gte]: current_timestamp - 86400 }
-        }
-    });
-    //create and cache jail data
-    records.forEach(record => getJailDataByRecord(record).catch(console.error));
+    jail_records
+        .findAll({
+            //fetch records no older than one day
+            where: {
+                jail_timestamp: { [Op.gte]: current_timestamp - 86400 }
+            }
+        })
+        //create and cache jail data
+        .then(records =>
+            records.forEach(record => getJailDataByRecord(record).catch(console.error))
+        )
+        .catch(console.error);
 }
 
 /**

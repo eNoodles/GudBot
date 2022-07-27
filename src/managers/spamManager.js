@@ -154,12 +154,9 @@ class MessageGroup {
                 channel_data.channel.bulkDelete(channel_data.messages).catch(logUnlessUnknown);
             }
         });
-
-        //store promise calls
-        const promises = [];
         
         let senders_field = '';
-        this.senders.forEach(async (sender_data, sender_id) => {
+        this.senders.forEach((sender_data, sender_id) => {
             //format senders field
             senders_field += `<@${sender_id}> - ${sender_data.count} ${sender_data.count === 1 ? 'time' : 'times'}\n`;
 
@@ -167,23 +164,19 @@ class MessageGroup {
 
             //if ban action taken, ban senders
             if (this.ban_action.active && member.manageable && !isAdmin(member)) {
-                promises.push(
-                    member.ban({
-                        reason: this.ban_action.reason,
-                        days: this.ban_action.days
-                    }).catch(console.error)
-                );
+                member.ban({
+                    reason: this.ban_action.reason,
+                    days: this.ban_action.days
+                }).catch(console.error);
             }
             //otherwise if jail action taken, jail senders
             else if (this.jail_action.active && !member.roles.cache.has(ids.roles.jailed) && member.manageable && !isAdmin(member)) {
-                promises.push(
-                    jailMember(
-                        member, 
-                        { id: ids.client, tag: 'GudBot#4788' },
-                        this.jail_action.reason,
-                        this.jail_action.duration
-                    ).catch(console.error)
-                );
+                jailMember(
+                    member, 
+                    { id: ids.client, tag: 'GudBot#4788' },
+                    this.jail_action.reason,
+                    this.jail_action.duration
+                ).catch(console.error);
             }
         });
 
@@ -257,29 +250,23 @@ class MessageGroup {
 
         //update existing info message
         if (this.info_message?.editable) {
-            promises.push(
-                this.info_message
-                    .edit({
-                        embeds: [embed],
-                        components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
-                    })
-                    .catch(console.error)
-            );
+            this.info_message
+                .edit({
+                    embeds: [embed],
+                    components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
+                })
+                .catch(console.error);
         }
         //send new info message
         else {
-            promises.push(
-                getCachedChannel(ids.channels.admin)
-                    .send({
-                        embeds: [embed],
-                        components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
-                    })
-                    .then(message => this.info_message = message)
-                    .catch(console.error)
-            );
+            getCachedChannel(ids.channels.admin)
+                .send({
+                    embeds: [embed],
+                    components: [new MessageActionRow().addComponents([del, jail, ban, ignore])]
+                })
+                .then(message => this.info_message = message)
+                .catch(console.error);
         }
-
-        await Promise.all(promises);
     }
 
     /**
