@@ -17,6 +17,10 @@ const ids = {
         gmteam: '409531885119864832',
         jailed: '865603749393334283',
         blankicon: '894731175216701450'
+    },
+
+    commands: {
+        ping: '1001289025149210624'
     }
 };
 
@@ -36,6 +40,10 @@ const ids = {
 //         gmteam: '409531885119864832',
 //         jailed: '603983150011514979',
 //         blankicon: '894731175216701450'
+//     },
+
+//     commands: {
+//         ping: ''
 //     }
 // };
 
@@ -78,7 +86,7 @@ function getCachedChannel(id) {
 
 /**
  * @param {Date} [date] Date object to convert to unix timestamp. If not given, get current date.
- * @returns Get time in Unix system - seconds passed since 1/1/1970
+ * @returns Time in Unix system (seconds passed since 1/1/1970)
  */
 function getUnixTimestamp(date) {
     date = date ?? new Date();
