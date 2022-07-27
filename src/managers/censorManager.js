@@ -205,11 +205,9 @@ function generateWhitelists() {
  * @returns True if message meets whitelist criteria
  */
 function checkWhitelists(message) {
-    return (
-        whitelisted_users.indexOf(message.author.id) > -1 || 
-        whitelisted_channels.indexOf(message.channelId) > -1 || 
-        message.member?.roles.cache.some(role => whitelisted_roles.some(id => role.id === id) )
-    );
+    return whitelisted_users?.includes(message.author.id) 
+        || whitelisted_channels?.includes(message.channelId) 
+        || message.member?.roles.cache.some(role => whitelisted_roles?.includes(role.id) );
 }
 
 /**

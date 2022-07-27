@@ -13,7 +13,7 @@ module.exports = {
             .setDescription('Set thresholds for automatic spam-handling actions.')
             .addBooleanOption(option => option
                 .setName('ephemeral')
-                .setDescription('Set this to true if you want the reply to be only visible to you.')
+                .setDescription('Set to true if you want the reply to be only visible to you.')
             )
         ),
 
