@@ -25,12 +25,12 @@ module.exports = {
                     //replace capturing groups with non capturing ones
                     .replace(/\((?!\?)/g, '(?:')
                     //find non-latin-letter characters, keep supported ones, discard others
-                    .replace(/(\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??|\|)|(?:(?<=\\)[A-Za-z]|[^A-Za-z])/g, (match, keep) => keep ? match : '')
+                    .replace(/(\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??)|(?:(?<=\\)[A-Za-z|]|[^A-Za-z|])/g, (match, keep) => keep ? match : '')
                     //prevent infinite matching, like in 'test|', 'test(|abc)', 'test(ab||cd)'
                     //replace double || with single |
                     .replace(/\|\|/g, '|')
-                    //remove | that are at beginning or end of string, or have non latin char next to them
-                    .replace(/^\||\|$|\|(?=[^a-z])|(?<=[^a-z])\|/g, '')
+                    //remove | that are at beginning or end of string/group
+                    .replace(/^\||\|$|\|(?=[^a-z\[(])|(?<=[^a-z\])}*+?])\|/g, '')
                     //replace alternative groups with sets (ex: (?:a|b|c) => [abc] )
                     .replace(/(?:\((?:\?:)?)?([a-z]+\|[a-z]+(?:\|[a-z]+)*)\)?/g, (match, content) => {
                         //get individual alternatives (ex: (?:a|b|c) => ['a', 'b', 'c'] )
@@ -41,7 +41,7 @@ module.exports = {
                     });
 
                 //add fixed input to responses
-                responses.push({ name: fixed, value: fixed });
+                if (fixed) responses.push({ name: fixed, value: fixed });
                 
                 const suggested = fixed
                     //replace with 's' or '[sz]' found at end of string, add * quantifier (or replace existing)
@@ -70,7 +70,7 @@ module.exports = {
                     //add + to any element without quanitifier (except from first)
                     .replace(/(?<!^)(?:\[\^?(?:[a-z]-[a-z]|[a-z])+\]|[)a-z](?![^\[]*\]))(?!(?:{[0-9],?[0-9]?}|[*+?])\??)/g, match => `${match}+`);
 
-                if (suggested !== fixed) responses.push({ name: suggested, value: suggested });
+                if (suggested && suggested !== fixed) responses.push({ name: suggested, value: suggested });
 
                 await interaction.respond(responses);
             }
@@ -84,7 +84,7 @@ module.exports = {
                 //     .map(source => source.replace(/__OR__/g, '|'));
 
                 const sources = (await blacklist.findAll() || []).map(e => e.word);
-                if (!sources || sources.length === 0) return;
+                if (!sources?.length) return;
 
                 const responses = new Set();
 

@@ -3,7 +3,7 @@ const { PermissionFlagsBits } = require('discord-api-types/v10');
 const { CommandInteraction, MessageEmbed } = require('discord.js');
 const { blacklist, whitelist } = require('../../database/dbObjects');
 const { generateBlacklist, generateWhitelists } = require('../../managers/censorManager');
-const { colors, createErrorEmbed } = require('../../utils');
+const { colors, createErrorEmbed, ids } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -59,7 +59,7 @@ module.exports = {
             case 'blacklist':
                 if (add && remove) {
                     await interaction.reply({
-                        embeds: [createErrorEmbed(`<:error:1000033728531267615> Please enter these commands separately:\`\`\`/censor blacklist add:${add}\`\`\`\`\`\`/censor blacklist remove:${remove}\`\`\``)], 
+                        embeds: [createErrorEmbed(`<:error:${ids.emojis.error}> Please enter these commands separately:\`\`\`/censor blacklist add:${add}\`\`\`\`\`\`/censor blacklist remove:${remove}\`\`\``)], 
                         ephemeral: true
                     });
                 }
@@ -67,25 +67,26 @@ module.exports = {
                     //make sure string isn't too short or too long
                     if (add.length < 3 || add.length > 50) {
                         await interaction.reply({
-                            embeds: [createErrorEmbed(`<:error:1000033728531267615> Please enter a String or Regular Expression between 3 - 50 characters.\`\`\`${add}\`\`\``)], 
+                            embeds: [createErrorEmbed(`<:error:${ids.emojis.error}> Please enter a String or Regular Expression between 3 - 50 characters.\`\`\`${add}\`\`\``)], 
                             ephemeral: true
                         });
                         return;
                     }
                     
-                    //find all non-latin-letter characters, replace unsupported ones with ^ pointer, keep supported ones
+                    //find all non-latin-letter characters, replace unsupported ones with carets, keep supported ones
                     let found_unsupported = false;
-                    let unsupported = add.replace(/(\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??|\|)|(?:(?<=\\)[A-Za-z]|[^A-Za-z])/g, (match, keep) => {
+                    let unsupported = add.replace(/(\[\^?(?=.+?\])|(?<=\[\^?.+?)\]|(?<=\[\^?.+?)-(?=.+?\])|\(\?(?::|<?[=!])(?=.+?\))|(?<=\(\?(?::|<?[=!]).+?)\)|(?<=[a-z\])])(?:{[0-9],?[0-9]?}|[*+?])\??)|([\ud800-\udbff])|(?:(?<=\\)[A-Za-z|]|[^A-Za-z|])/g, (match, keep, surrogate) => {
                         if (keep) return match;
                         else {
                             found_unsupported = true;
-                            return '^';
+                            //completely remove high surrogates, to maintain consistent caret indexes
+                            return surrogate ? '' : '^';
                         }
                     });
 
                     //if unsupported chars found
                     if (found_unsupported) {
-                        //replace everything but ^ pointers with spaces
+                        //replace everything but carets with spaces
                         unsupported = unsupported.replace(/[^^]/g, ' ');
 
                         //explain to user what regexp classes are supported
@@ -109,7 +110,7 @@ module.exports = {
                         //notify user
                         const embed = new MessageEmbed()
                             .setTitle('Unsupported characters detected')
-                            .setDescription(`\`\`\`\n${add}\n${unsupported}\`\`\`\nYour String or Regular Expression may only contain:\`\`\`${allowed_info}\`\`\`\n<:error:1000033728531267615> Please note that homoglyphs (different characters that are visually similar), numerical substitutes, fonts, etc. are handled internally by the censoring algorithm. It is also case insensitive.`)
+                            .setDescription(`\`\`\`\n${add}\n${unsupported}\`\`\`\nYour String or Regular Expression may only contain:\`\`\`${allowed_info}\`\`\`\n<:error:${ids.emojis.error}> Please note that homoglyphs (different characters that are visually similar), numerical substitutes, fonts, etc. are handled internally by the censoring algorithm. It is also case insensitive.`)
                             .setColor(colors.red);
 
                         await interaction.reply({
@@ -164,7 +165,7 @@ module.exports = {
                     //make sure string isn't too short or too long
                     if (remove.length < 3 || remove.length > 50) {
                         await interaction.reply({
-                            embeds: [createErrorEmbed(`<:error:1000033728531267615> Please enter a String or Regular Expression between 3 - 50 characters.\`\`\`${remove}\`\`\``)], 
+                            embeds: [createErrorEmbed(`<:error:${ids.emojis.error}> Please enter a String or Regular Expression between 3 - 50 characters.\`\`\`${remove}\`\`\``)], 
                             ephemeral: true
                         });
                         return;
@@ -211,7 +212,7 @@ module.exports = {
                             );
 
                             //if no words found in blacklist table
-                            if (blacklist_entries?.length === 0) {
+                            if (!blacklist_entries?.length) {
                                 desc += 'Nothing found.\n';
                             }
 
@@ -230,7 +231,7 @@ module.exports = {
             case 'whitelist':
                 if (add && remove) {
                     await interaction.reply({
-                        embeds: [createErrorEmbed(`<:error:1000033728531267615> Please enter these commands separately:\`\`\`/censor whitelist add:${add}\`\`\`\`\`\`/censor whitelist remove:${remove}\`\`\``)], 
+                        embeds: [createErrorEmbed(`<:error:${ids.emojis.error}> Please enter these commands separately:\`\`\`/censor whitelist add:${add}\`\`\`\`\`\`/censor whitelist remove:${remove}\`\`\``)], 
                         ephemeral: true
                     });
                 }
@@ -342,7 +343,7 @@ module.exports = {
                             );
 
                             //if no words found in whitelist table
-                            if (whitelist_entries?.length === 0) {
+                            if (!whitelist_entries?.length) {
                                 desc += 'Nothing found.';
                             }
 
@@ -374,7 +375,7 @@ module.exports = {
                         );
 
                         //if no words found in blacklist table
-                        if (blacklist_entries?.length === 0) {
+                        if (!blacklist_entries?.length) {
                             desc += 'Nothing found.\n';
                         }
 
@@ -383,7 +384,7 @@ module.exports = {
                             desc += `<${entry.type}${entry.id}> - added by <@${entry.added_by}>\n`
                         );
 
-                        if (whitelist_entries?.length === 0) {
+                        if (!whitelist_entries?.length) {
                             desc += 'Nothing found.';
                         }
 
