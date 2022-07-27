@@ -2,6 +2,7 @@ const { cacheJailData, checkJailCache } = require('../managers/jailManager');
 const { generateBlacklist, generateWhitelists } = require('../managers/censorManager');
 const { filterMessageGroups, generateThresholds } = require('../managers/spamManager');
 const { ids, cacheChannels, getCachedChannel } = require('../utils');
+const { cachePingData } = require('../managers/pingManager');
 
 module.exports = {
 	once: true,
@@ -15,6 +16,12 @@ module.exports = {
 		//no need to await, exceptions are handled locally within method
 		generateThresholds();
 
+		//fetch and cache ping configuration data from database for ping manager
+		client.guilds
+			.fetch(ids.guild)
+			.then(guild => cachePingData(guild))
+			.catch(console.erro);
+
 		//cache all channels from utils#ids
 		//await before proceeding since cached channels are needed
 		await cacheChannels(client);
@@ -25,7 +32,8 @@ module.exports = {
 		getCachedChannel(ids.channels.records)?.messages.fetch({ limit: 100, cache: true }).catch(console.error);
 
 		//fetch and cache jail data from database for jail manager
-		cacheJailData().catch(console.error);
+		//this has to be after await cacheChannels as it relies on records channel being cached
+		cacheJailData();
 
 		//do checks every 5 seconds
 		setInterval(() => {
