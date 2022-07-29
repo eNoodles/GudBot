@@ -1,132 +1,159 @@
 const { Collection, MessageEmbed, Role, Guild } = require("discord.js");
-const { getUnixTimestamp, colors, ids } = require("../utils");
+const { colors, ids, getUnixTimestamp } = require("../utils");
 const { ping_configs } = require('../database/dbObjects');
 const { Model } = require("sequelize");
+
+/**@enum {number}*/
+const pinger_types = {
+    user: 0,
+    role: 1
+};
+
+class PingConfig {
+    /**
+     * @param {Model} config ping_configs model instance in database
+     */
+    constructor(config) {
+        /**@type {string} ID of database entry*/
+        this.id = config.id;
+        /**@type {Model} Database entry*/
+        this.entry = config;
+        /**@type {number} Cooldown time in seconds*/
+        this.cooldown = config.cooldown;
+        /**@type {number} Unix timestamp of last ping*/
+        this.last_ping = -1;
+        /**@type {string} ID of role or user that can ping this role*/
+        this.pinger_id = config.pinger_id;
+        /**@type {pinger_types} */
+        this.pinger_type = config.pinger_type;
+        /**@type {string} ID of channel in which this role can be pinged*/
+        this.channel_id = config.channel_id;
+    }
+
+    /**Get unix timestamp of when the last cooldown ended/current cooldown will end.*/
+    getCooldownEnd() { 
+        return this.last_ping + this.cooldown;
+    }
+
+    /**Describes this config's usage*/
+    getDescription() {
+        const { pinger_id, pinger_type, channel_id, cooldown } = this;
+
+        const by = pinger_id === ids.guild ? `@everyone` : `<${pinger_type === pinger_types.user ? '@' : '@&'}${pinger_id}>`;
+        const where = `in <#${channel_id}>`;
+        const when = 
+            !cooldown          ? '`anytime`' :
+            cooldown > 3600    ? `every \`${Math.floor(cooldown / 3600)} hours\`` :
+            cooldown === 3600  ? 'every `1 hour`' :
+            cooldown > 60      ? `every \`${Math.floor(cooldown / 60)} minutes\`` :
+            cooldown === 60    ? 'every `1 minute`' :
+            cooldown > 1       ? `every \`${cooldown} seconds\`` : 
+            'every \`1 second\`';
+
+        return `${by} ${where} ${when}`;
+    }
+}
 
 /**
  * K: role ID
  * V: PingData
  * @type {Collection<string,PingData>} 
  */
-let ping_data_cache = new Collection();
+ let ping_data_cache = new Collection();
 
 class PingData {
     /**
-     * @param {Role} role Role to create PingDat for.
-     * @param {Model} config Model instance of ping_configs in database
+     * @param {Role} role Role to create PingData for.
+     * @param {Model[]} [configs] Array of ping_configs model instances in database
      */
-    constructor(role, config) {
-        //id of role this ping data is for
+    constructor(role, configs) {
+        /**Role id*/
         this.id = role.id;
-        //role name
+        /**Role name*/
         this.name = role.name;
-
-        //database entry
-        this.config = config;
-
-        //cooldown time in seconds
-        this.cooldown = config.cooldown;
-        //unix timestamp of last ping
-        this.last_ping = -1;
-
-        //ids are saved a single string in the database (ex: 'id1|id2|id3')
-        //array of ids of channels in which this role can be pinged
-        this.channel_ids = config.channel_ids ? config.channel_ids.split('|') : [];
-        //array of ids of roles that can ping this role
-        this.role_ids = config.role_ids ? config.role_ids.split('|') : [];
-        //array of ids of users that can ping this role
-        this.user_ids = config.user_ids ? config.user_ids.split('|') : [];
-    }
-
-    /**Whether or not cooldown time has passed since last ping.*/
-    onCooldown() {
-        return getUnixTimestamp() - this.last_ping < this.cooldown;
-    }
-
-    /**Whether or not command usage meets criteria to ping.*/
-    canPing(channel_id, user_id, role_cache) {
-        return this.channel_ids?.includes(channel_id)
-            || this.user_ids?.includes(user_id)
-            || this.role_ids?.some(id => role_cache?.has(id) );
+        /**Raw mention text*/
+        this.mention = this.id === ids.guild ? '@everyone' : `<@&${this.id}>`;
+        /**@type {PingConfig[]}*/
+        this.configs = configs?.map(c => new PingConfig(c)) || [];
     }
 
     /**
-     * Generates embed that displays ping configuration for this role.
-     * @param {boolean} [update] If title should reflect configuration update.
-     * @returns {MessageEmbed}
+     * Creates a PingConfig from a ping_configs model instance in database, then adds it to configs
+     * @param {Model} config ping_configs model instance in database
      */
-    generateConfigEmbed(update) {
-        const embed = new MessageEmbed()
-            .setTitle(update ? `Updated ping configuration for ${this.name}` : `Ping configuration for ${this.name}`)
-            .setDescription(`</ping:${ids.commands.ping}> <@&${this.id}> can be used...`)
-            .addField('In these channels', (() => {
-                let str = '';
-                this.channel_ids.forEach(id => str += `\n<#${id}>`);
-                return str ? str : 'None specified.';
-            })())
-            .addField('By these users', (() => {
-                let str = '';
-                this.user_ids.forEach(id => str += `\n<@${id}>`);
-                return str ? str : 'None specified.';
-            })())
-            .addField('By these role members', (() => {
-                let str = '';
-                this.role_ids.forEach(id => str += `\n<@&${id}>`);
-                return str ? str: 'None specified.';
-            })())
-            .addField('Cooldown', (() => {
-                const { cooldown } = this;
-                if (cooldown === 0) return '`None`';
-                else if (cooldown >= 3600) {
-                    const hours = Math.floor(cooldown / 3600);
-                    return `\`${hours} ${hours === 1 ? 'hour' : 'hours'}\``;
-                }
-                else if (cooldown >= 60) {
-                    const minutes =  Math.floor(cooldown / 60);
-                    return `\`${minutes} ${minutes === 1 ? 'minute' : 'minutes'}\``;
-                }
-                else return `\`${cooldown} ${cooldown === 1 ? 'second' : 'seconds'}\``;
-            })())
-            .setFooter({ text: 'Use /configping optional parameters to edit.' })
-            .setColor(colors.purple);
+    addConfig(config) {
+        this.configs.push(new PingConfig(config));
+    }
 
-        return embed;
+    /**
+     * Finds ping config that matches command usage, prioritizes config whose cooldown is inactive and will be over the soonest.
+     * @param {string} channel_id ID of channel in which /ping commad was used.
+     * @param {string} category_id ID of category channel in which /ping command was used.
+     * @param {string} user_id ID of user who initiated /ping command.
+     * @param {Collection<string,Role>} role_cache Collection of roles belonging to member who initiated /ping command.
+     */
+    findOptimalConfig(channel_id, category_id, user_id, role_cache) {
+        //find configs that match command usage
+        const matching_configs = this.configs
+            .filter(c => 
+                (c.channel_id === channel_id || c.channel_id === category_id) && 
+                (c.pinger_type === pinger_types.user && c.pinger_id === user_id || role_cache?.has(c.pinger_id))
+            );
+
+        //if command usage does not match any configs, regardless of cooldown
+        if (!matching_configs?.length) return undefined;
+
+        //sort configs by which cooldown will be over the soonest
+        const current_timestamp = getUnixTimestamp();
+        const sorted_configs = matching_configs.sort((a,b) => {
+            //if a is on cooldown, use the timestamp for when it ends, otherwise use current timestamp, then add cooldown duration
+            const a_end = a.getCooldownEnd();
+            const a_next_end = (a_end > current_timestamp ? a_end : current_timestamp) + a.cooldown;
+
+            //same for b
+            const b_end = b.getCooldownEnd();
+            const b_next_end = (b_end > current_timestamp ? b_end : current_timestamp) + b.cooldown;
+
+            //sort by ascending
+            return a_next_end - b_next_end;
+        });
+
+        //find configs among sorted whose cooldowns are currently inactive
+        const active_configs = sorted_configs.filter(config => current_timestamp >= config.getCooldownEnd());
+
+        return active_configs[0] ?? sorted_configs[0];
+    }
+
+    /**
+     * Generates embed that displays ping configurations for this role.
+     * @param {string} title Prefix for embed title. Final title = `${title} ${this.name}`
+     */
+    generateConfigEmbed(title = 'Ping configurations for') {
+        return new MessageEmbed()
+            .setTitle(`${title} ${this.name}`)
+            .setDescription(
+                `</ping:${ids.commands.ping}> ${this.mention} can be used by...\n• ${['members with the `Mention @everyone` permission', ...this.configs.map(c => c.getDescription())].join('\n• ')}`
+            )
+            .setFooter({ text: 'Use /pingconfig add to update cooldowns.' })
+            .setColor(colors.purple);
     }
 }
 
 /**
  * Fetches PingData from cache or database, creates and caches it if not found.
  * @param {Role} role Role to fetch ping data for.
- * @param {boolean} create If data not found, create and cache it.
- * @returns {Promise<PingData|undefined>}
+ * @returns {Promise<PingData>}
  */
-async function fetchPingData(role, create) {
+async function fetchOrCreatePingData(role) {
     //check cache
     let data = ping_data_cache.get(role.id);
 
-    //if not found in cache
     if (!data) {
         //check database
-        const config = await ping_configs.findOne({ where: { role_id: role.id } });
+        const configs = await ping_configs.findAll({ where: { role_id: role.id } }).catch(console.error);
 
-        //if found in db, create ping data and cache it
-        if (config) {
-            data = new PingData(role, config);
-            ping_data_cache.set(role.id, data);
-        }
-        //create new ping config, add to db and cache it
-        else if (create) {
-            const config = await ping_configs.create({
-                role_id: role.id,
-                cooldown: 0,
-                channel_ids: '',
-                user_ids: '',
-                role_ids: ''
-            });
-
-            data = new PingData(role, config);
-            ping_data_cache.set(role.id, data);
-        }
+        data = new PingData(role, configs ?? []);
+        ping_data_cache.set(role.id, data);
     }
 
     return data;
@@ -144,13 +171,18 @@ function cachePingData(guild) {
                 guild.roles
                     //fetch role from guild
                     .fetch(config.role_id)
-                    //create new ping data for role, cache it
-                    .then(role => 
-                        ping_data_cache.set(
-                            role.id, 
-                            new PingData(role, config)
-                        ) 
-                    )
+                    .then(role => {
+                        //check if ping data already cached
+                        let data = ping_data_cache.get(role.id);
+
+                        //cache if necessary
+                        if (!data) {
+                            data = new PingData(role);
+                            ping_data_cache.set(role.id, data);
+                        }
+
+                        data.addConfig(config);
+                    })
                     .catch(console.error)
             )
         )
@@ -158,6 +190,8 @@ function cachePingData(guild) {
 }
 
 module.exports = {
-    fetchPingData,
+    pinger_types,
+    ping_data_cache,
+    fetchOrCreatePingData,
     cachePingData
 };

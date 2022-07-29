@@ -1,8 +1,8 @@
 const { SlashCommandBuilder } = require('@discordjs/builders');
 const { PermissionFlagsBits } = require('discord-api-types/v10');
 const { CommandInteraction, MessageEmbed } = require('discord.js');
-const { fetchPingData } = require('../../managers/pingManager');
-const { colors, getUnixTimestamp } = require('../../utils');
+const { fetchOrCreatePingData } = require('../../managers/pingManager');
+const { colors, getUnixTimestamp, ids } = require('../../utils');
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -18,14 +18,13 @@ module.exports = {
      * @param {CommandInteraction} interaction 
      */
     async execute(interaction) {
-        const { options, channelId, member, commandId } = interaction;
-        const role = options.getRole('role', true);
-        const data = await fetchPingData(role);
+        const { options, channel, member, commandId } = interaction;
+        const role = options.getRole('role');
+        const role_mention = role.id === ids.guild ? '@everyone' : `<@&${role.id}>`;
+        const ping_mention = `</ping:${commandId}>`;
 
-        //users with this permission may ping any role, any time
+        //users with mentions perm may ping any role, any time
         if (member.permissions.has(PermissionFlagsBits.MentionEveryone)) {
-            //update last ping time if data exists, otherwise it doesnt matter since the cooldown would be none by default
-            if (data) data.last_ping = getUnixTimestamp();
             //defer reply, then instantly delete it and send a normal message that pings the role
             //do this because interaction replies are webhook and use @everyone perms, meaning they cant mention everyone even if the bot itself can
             //it is unnecessary to await any of this
@@ -37,20 +36,28 @@ module.exports = {
                         .catch(console.error);
                     interaction.channel
                         .send({
-                            content: `<@${member.id}> used </ping:${commandId}> <@&${role.id}>`,
-                            allowedMentions: { parse: ['roles'] } //only ping the role, not the command user
+                            content: `<@${member.id}> used ${ping_mention} ${role_mention}`,
+                            allowedMentions: { parse: ['roles', 'everyone'] } //only ping the role, not the command user
                         })
                         .catch(console.error);
-                })
-                .catch(console.error);
+                });
+
+            return;
         }
-        //if user meets the criteria to ping this role
-        else if (data?.canPing(channelId, member.id, member.roles.cache)) {
-            //if role is on cooldown, deny command usage but state when cooldown ends
-            if (data.onCooldown()) {
+
+        const data = await fetchOrCreatePingData(role);
+        const config = data?.findOptimalConfig(channel.id, channel.parentId, member.id, member.roles.cache);
+
+        //if appropriate config for command usage found
+        if (config) {
+            const current_timestamp = getUnixTimestamp();
+            const cooldown_end = config.getCooldownEnd();
+
+            //if config's cooldown hasn't ended, deny command usage but state when cooldown ends
+            if (current_timestamp < cooldown_end) {
                 const embed = new MessageEmbed()
                     .setTitle('Ping denied')
-                    .setDescription(`</ping:${commandId}> <@&${role.id}> is on cooldown, you will be able to use it <t:${data.last_ping + data.cooldown}:R>`)
+                    .setDescription(`${ping_mention} ${role_mention} is on cooldown, you will be able to use it <t:${cooldown_end}:R>`)
                     .setColor(colors.blurple);
 
                 await interaction.reply({
@@ -58,9 +65,11 @@ module.exports = {
                     ephemeral: true
                 });
             }
+            //allow ping
             else {
                 //update last ping time
-                data.last_ping = getUnixTimestamp();
+                config.last_ping = current_timestamp;
+                
                 //defer reply, then instantly delete it and send a normal message that pings the role
                 //do this because interaction replies are webhook and use @everyone perms, meaning they cant mention everyone even if the bot itself can
                 //it is unnecessary to await any of this
@@ -72,19 +81,18 @@ module.exports = {
                             .catch(console.error);
                         interaction.channel
                             .send({
-                                content: `<@${member.id}> used </ping:${commandId}> <@&${role.id}>`,
-                                allowedMentions: { parse: ['roles'] } //only ping the role, not the command user
+                                content: `<@${member.id}> used ${ping_mention} ${role_mention}`,
+                                allowedMentions: { parse: ['roles', 'everyone'] } //only ping the role, not the command user
                             })
                             .catch(console.error);
-                    })
-                    .catch(console.error);
+                    });
             }
         }
         //if criteria isn't met or ping configuration for this role does not exist, deny command usage
         else {
             const embed = new MessageEmbed()
                 .setTitle('Ping denied')
-                .setDescription(`You are not allowed to ping <@&${role.id}>`)
+                .setDescription(`You are not allowed to ${ping_mention} ${role_mention}`)
                 .setColor(colors.red);
 
             await interaction.reply({
