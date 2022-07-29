@@ -370,7 +370,7 @@ function getMessageGroupByContent(content) {
     //cast to lowercase, then remove emojis and whitespace
     const sterilized_content = content
         .toLowerCase()
-        .replace(/(?:\s|<:\w{2,32}:[0-9]{17,18}>|\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, '');
+        .replace(/(?:\s|<:\w{2,32}:[0-9]{17,19}>|\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, '');
 
     return spam_groups.find(group => group.sterilized_content === sterilized_content) 
         ?? temp_groups.find(group => group.sterilized_content === sterilized_content);
@@ -410,7 +410,7 @@ async function addToMessageGroups(message) {
     //cast to lowercase, then remove emojis and whitespace
     const sterilized_content = message.content
         .toLowerCase()
-        .replace(/(?:\s|<:\w{2,32}:[0-9]{17,18}>|\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, '');
+        .replace(/(?:\s|<:\w{2,32}:[0-9]{17,19}>|\p{Emoji_Presentation}|\p{Extended_Pictographic})/gu, '');
 
     //make sure sterilized content isnt empty (if original message only consisted of emojis)
     if (!sterilized_content) return;
