@@ -1,8 +1,8 @@
 const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageButton, MessageEmbed, Message, GuildMember, MessageActionRow, User, Collection } = require('discord.js');
 const { Model } = require('sequelize');
-const { Op, jail_records, jailed_roles} = require('../database/dbObjects');
-const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, addEllipsisDots, logUnlessUnknown, getCachedChannel } = require('../utils');
+const { Op, jail_records, jailed_roles } = require('../database/dbObjects');
+const { ids, colors, getUnixTimestamp, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, addEllipsisDots, logUnless, getCachedChannel } = require('../utils');
 
 /**
  * K: record ID
@@ -83,7 +83,7 @@ class JailData {
                 ]
             })
             .then(message => this.message = message)
-            .catch(logUnlessUnknown);
+            .catch(e => logUnless(e, ids.errors.unknown_message));
         
         //await all promises
         await Promise.all([set_roles, update_record, edit_message]);
@@ -122,7 +122,7 @@ class JailData {
         const edit_message = this.message
             .edit({ embeds: embeds })
             .then(message => this.message = message)
-            .catch(logUnlessUnknown);
+            .catch(e => logUnless(e, ids.errors.unknown_message));
 
         //await all promises
         await Promise.all([update_record, edit_message]);
@@ -153,7 +153,7 @@ class JailData {
         const edit_message = this.message
             .edit({ embeds: embeds })
             .then(message => this.message = message)
-            .catch(logUnlessUnknown);
+            .catch(e => logUnless(e, ids.errors.unknown_message));
 
         //await all promises
         await Promise.all([update_record, edit_message]);
@@ -185,7 +185,7 @@ class JailData {
 
         //delete #criminal-records message
         if (this.message instanceof Message) 
-            delete_message = this.message.delete().catch(logUnlessUnknown);
+            delete_message = this.message.delete().catch(e => logUnless(e, ids.errors.unknown_message));
 
         //await all promises
         await Promise.all([destroy_record, delete_message]);
@@ -362,7 +362,7 @@ async function jailMember(member, jailer_user, reason, duration, deleted_id) {
 
         //if message was sent
         if (records_msg) {
-            records_msg.delete().catch(logUnlessUnknown);
+            records_msg.delete().catch(e => logUnless(e, ids.errors.unknown_message));
         }
 
         //the command handler should still handle the error

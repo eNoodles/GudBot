@@ -1,7 +1,7 @@
 const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageReaction, User, MessageEmbed, MessageButton, MessageActionRow, Collection, Message, MessageSelectMenu, CommandInteraction, ButtonInteraction, SelectMenuInteraction } = require("discord.js");
 const { Model } = require('sequelize');
-const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, addEllipsisDots, getUnixTimestamp, createErrorEmbed, logUnlessUnknown, getCachedChannel } = require("../utils");
+const { ids, colors, extractImageUrls, prependFakeReply, generateFileLinks, findLastSpaceIndex, addEllipsisDots, getUnixTimestamp, createErrorEmbed, logUnless, getCachedChannel } = require("../utils");
 const { starboard } = require('../database/dbObjects');
 
 const star_count = 3;
@@ -193,7 +193,7 @@ async function updateStarboard(reaction, user) {
         .catch(e => {
             //in case something goes wrong, delete message from starboard channel
             console.error(e);
-            sent.delete().catch(logUnlessUnknown);
+            sent.delete().catch(e => logUnless(e, ids.errors.unknown_message));
         });
     }
 }

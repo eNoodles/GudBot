@@ -1,7 +1,7 @@
 const { ButtonStyle } = require('discord-api-types/v10');
 const { MessageEmbed, MessageButton, ButtonInteraction, MessageActionRow } = require('discord.js');
 const { getJailDataByRecord } = require('../../managers/jailManager');
-const { createErrorEmbed, colors, logUnlessUnknown } = require('../../utils');
+const { createErrorEmbed, colors, logUnless, ids } = require('../../utils');
 
 module.exports = {
     /**
@@ -76,6 +76,6 @@ module.exports = {
         });
 
         //after button is clicked or collector expires, delete the prompt
-        collector.on('end', () => { interaction.deleteReply().catch(logUnlessUnknown) } );
+        collector.on('end', () => { interaction.deleteReply().catch(e => logUnless(e, ids.errors.unknown_message)) } );
 	}
 };

@@ -1,6 +1,6 @@
 const { ButtonStyle } = require("discord-api-types/v10");
 const { Message, Collection, GuildMember, TextChannel, MessageEmbed, MessageButton, MessageActionRow, ButtonInteraction, SelectMenuInteraction, MessageSelectMenu } = require("discord.js");
-const { ids, logUnlessUnknown, colors, getCachedChannel, isAdmin, generateIntegerOptions } = require("../utils");
+const { ids, logUnless, colors, getCachedChannel, isAdmin, generateIntegerOptions } = require("../utils");
 const { jailMember } = require("./jailManager");
 const { thresholds } = require('../database/dbObjects');
 
@@ -151,7 +151,7 @@ class MessageGroup {
 
             //if delete action taken, bulk delete messages from this channel
             if (this.delete_action.active) {
-                channel_data.channel.bulkDelete(channel_data.messages).catch(logUnlessUnknown);
+                channel_data.channel.bulkDelete(channel_data.messages).catch(e => logUnless(e, ids.errors.unknown_message));
             }
         });
         

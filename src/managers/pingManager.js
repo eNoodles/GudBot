@@ -40,13 +40,13 @@ class PingConfig {
         const { pinger_id, pinger_type, channel_id, cooldown } = this;
 
         const by = pinger_id === ids.guild ? `@everyone` : `<${pinger_type === pinger_types.user ? '@' : '@&'}${pinger_id}>`;
-        const where = `in <#${channel_id}>`;
+        const where = `in **<#${channel_id}>**`;
         const when = 
-            !cooldown          ? '`anytime`' :
+            !cooldown          ? `\`anytime\`` :
             cooldown > 3600    ? `every \`${Math.floor(cooldown / 3600)} hours\`` :
-            cooldown === 3600  ? 'every `1 hour`' :
+            cooldown === 3600  ? `every \`1 hour\`` :
             cooldown > 60      ? `every \`${Math.floor(cooldown / 60)} minutes\`` :
-            cooldown === 60    ? 'every `1 minute`' :
+            cooldown === 60    ? `every \`1 minute\`` :
             cooldown > 1       ? `every \`${cooldown} seconds\`` : 
             'every \`1 second\`';
 
@@ -132,7 +132,7 @@ class PingData {
         return new MessageEmbed()
             .setTitle(`${title} ${this.name}`)
             .setDescription(
-                `</ping:${ids.commands.ping}> ${this.mention} can be used by...\n• ${['members with the `Mention @everyone` permission', ...this.configs.map(c => c.getDescription())].join('\n• ')}`
+                `</ping:${ids.commands.ping}> ${this.mention} can be used by...\n• ${['members with the *Mention \\@everyone* permission', ...this.configs.map(c => c.getDescription())].join('\n• ')}`
             )
             .setFooter({ text: 'Use /pingconfig add to update cooldowns.' })
             .setColor(colors.purple);

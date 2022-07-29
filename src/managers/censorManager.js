@@ -413,6 +413,9 @@ function parseContent(content) {
  * @returns {Promise<boolean>} Whether or not message was censored.
  */
 async function censorMessage(message) {
+    //only check messages in server
+    if (message.channel.guildId !== ids.guild) return;
+
     //threads dont have webhooks, so in that case we get the parent channel
     const is_thread = message.channel.isThread();
     const channel = is_thread ? message.channel.parent : message.channel;
