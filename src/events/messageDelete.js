@@ -1,7 +1,9 @@
 const { Client, Message, MessageEmbed } = require('discord.js');
 const { censored_authors_cache } = require('../managers/censorManager');
 const { cacheDeletedMessage, getJailDataByMessage } = require('../managers/jailManager');
-const { ids, colors, getCachedChannel } = require('../utils');
+const { fetchStarboardEntry, starboard_cache } = require('../managers/starboardManager');
+const { ids, colors, getCachedChannel, logUnless } = require('../utils');
+const { starboard } = require('../database/dbObjects');
 
 module.exports = {
     /**
@@ -61,5 +63,45 @@ module.exports = {
         //if message is uncached, author will be null
         if ((message.author && !message.author.bot) || censored_message)
             cacheDeletedMessage(message);
+
+        // I decided that I dont want to delete starboard posts when the original messages are deleted
+        // since they cant be reacted to, it doesn't necessarily break anything, as the viewer accounts for deleted messages
+
+        // //check if message was on the starboard (dont await)
+        // fetchStarboardEntry(message.id)
+        //     .then(entry => {
+        //         if (entry) {
+        //             getCachedChannel(ids.channels.starboard)?.messages
+        //                 //fetch starboard message
+        //                 .fetch(entry.id)
+        //                 //delete it
+        //                 .then(message => message.delete().catch(e => logUnless(e, ids.errors.unknown_message)))
+        //                 .catch(e => logUnless(e, ids.errors.unknown_message));
+
+        //             //delete entry from database
+        //             entry.destroy().catch(console.error);
+        //             //delete entry from cache
+        //             starboard_cache.delete(message.id);
+        //         }
+        //     })
+        //     .catch(console.error);
+
+        //delete starboard posts when a #starboard message is deleted
+        if (message.channelId === ids.channels.starboard) {
+            //no need to await any of this, since it's deleted it's useless
+            starboard
+                //find entry matching id of #starboard message
+                .findOne({ where: { id: message.id } })
+                .then(entry => {
+                    //if found
+                    if (entry) {
+                        //delete entry from cache
+                        starboard_cache.delete(entry.original_id);
+                        //delete entry from database
+                        entry.destroy().catch(console.error);
+                    }
+                })
+                .catch(console.error);
+        }
 	}
 };

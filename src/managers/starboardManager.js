@@ -19,7 +19,7 @@ let is_cache_uptodate = false;
 /**
  * Fetches starboard entry from local cache or database (caches it in the latter case)
  * @param {string} original_id ID of original starred message
- * @returns {Promise<Model>} Model instance of starboard entry
+ * @returns {Promise<Model|null>} Model instance of starboard entry
  */
 async function fetchStarboardEntry(original_id) {
     //first check local cache
@@ -147,7 +147,7 @@ async function updateStarboard(reaction, user) {
     //update existing starboard entry
     if (starboard_entry) {
         //fetch starboard message
-        const starboard_message = await star_channel.messages.fetch(starboard_entry.id);
+        const starboard_message = await star_channel.messages.fetch(starboard_entry.id).catch(e => logUnless(e, ids.errors.unknown_message));
         if (!starboard_message) return;
 
         //update message with edited embed
@@ -171,11 +171,15 @@ async function updateStarboard(reaction, user) {
             .setLabel('Open')
             .setStyle(ButtonStyle.Link)
             .setURL(message.url);
+        
         //send new message in starboard channel
-        const sent = await star_channel.send({ 
-            embeds: [embed],
-            components: [new MessageActionRow().addComponents([link])]
-        });
+        const sent = await star_channel
+            .send({ 
+                embeds: [embed],
+                components: [new MessageActionRow().addComponents([link])]
+            })
+            .catch(e => logUnless(e, ids.errors.unknown_message));
+        
         if (!sent) return;
 
         //create new entry in db
@@ -191,9 +195,15 @@ async function updateStarboard(reaction, user) {
         //cache new entry
         .then(entry => starboard_cache.set(message.id, entry))
         .catch(e => {
-            //in case something goes wrong, delete message from starboard channel
-            console.error(e);
+            //delete the #starboard message if something goes wrong
             sent.delete().catch(e => logUnless(e, ids.errors.unknown_message));
+
+            //check if entry for the original message already exists
+            if (e.name === 'SequelizeUniqueConstraintError') {
+                //hopefully next time it will detect the existing entry and update it correctly, if not recursion goes brr
+                updateStarboard(reaction, user).catch(console.error);
+            }
+            else console.error(e); 
         });
     }
 }
@@ -436,6 +446,8 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
 }
 
 module.exports = {
+    starboard_cache,
+    fetchStarboardEntry,
     updateStarboard,
     updateStarboardViewer
 };
