@@ -347,56 +347,6 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
             return option;
         }));
 
-    //refresh button for retrying to fetch starboard entries
-    const refresh_button = new MessageButton()
-        //.setEmoji('🔄')
-        //.setLabel('⟳')
-        .setEmoji('1000425855199232000')
-        .setStyle(ButtonStyle.Secondary)
-        .setCustomId(`starboardNavigate|${entry?.id ?? ''}|0`);
-
-    //invalid entry, most likely the cache is empty
-    if (!entry) {
-        await replyOrUpdate({
-            embeds: [createErrorEmbed('No starboard entry found.', 'Try changing the sorting options.')],
-            components: [
-                new MessageActionRow().addComponents([sort_select]),
-                new MessageActionRow().addComponents([refresh_button])
-            ],
-            ephemeral: true
-        });
-        return;
-    }
-
-    //fetch channel where starred message was sent
-    const channel = await interaction.guild.channels.fetch(entry.channel_id);
-    if (!channel) {
-        await replyOrUpdate({
-            embeds: [createErrorEmbed(`Failed to fetch channel <#${entry.channel_id}>`)],
-            components: [
-                new MessageActionRow().addComponents([sort_select]),
-                new MessageActionRow().addComponents([refresh_button])
-            ],
-            ephemeral: true
-        });
-        return;
-    }
-    //fetch original starred message
-    const message = await channel.messages.fetch(entry.original_id);
-    if (!message) {
-        await replyOrUpdate({
-            embeds: [createErrorEmbed(`Failed to fetch message \`#${entry.original_id}\``)],
-            components: [
-                new MessageActionRow().addComponents([sort_select]),
-                new MessageActionRow().addComponents([refresh_button])
-            ],
-            ephemeral: true
-        });
-        return;
-    }
-
-    const embed = await createStarboardEmbed(message, entry.count);
-
     //navigational buttons
     const prev_button = new MessageButton()
         //.setEmoji('◀️')
@@ -424,6 +374,56 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
         .setLabel(`Open`)
         .setStyle(ButtonStyle.Link)
         .setURL(entry.url);
+
+    //refresh button for retrying to fetch starboard entries
+    const refresh_button = new MessageButton()
+        //.setEmoji('🔄')
+        //.setLabel('⟳')
+        .setEmoji('1000425855199232000')
+        .setStyle(ButtonStyle.Secondary)
+        .setCustomId(`starboardNavigate|${entry?.id ?? ''}|0`);
+
+    //invalid entry, most likely the cache is empty
+    if (!entry) {
+        await replyOrUpdate({
+            embeds: [createErrorEmbed('No starboard entry found.', 'Try changing the sorting options.')],
+            components: [
+                new MessageActionRow().addComponents([sort_select]),
+                new MessageActionRow().addComponents([refresh_button])
+            ],
+            ephemeral: true
+        });
+        return;
+    }
+
+    //fetch channel where starred message was sent
+    const channel = await interaction.guild.channels.fetch(entry.channel_id).catch(console.error);
+    if (!channel) {
+        await replyOrUpdate({
+            embeds: [createErrorEmbed(`Failed to fetch channel <#${entry.channel_id}>`)],
+            components: [
+                new MessageActionRow().addComponents([sort_select]),
+                new MessageActionRow().addComponents([prev_button, index_button, next_button, link_button, refresh_button])
+            ],
+            ephemeral: true
+        });
+        return;
+    }
+    //fetch original starred message
+    const message = await channel.messages.fetch(entry.original_id).catch(console.error);
+    if (!message) {
+        await replyOrUpdate({
+            embeds: [createErrorEmbed(`Failed to fetch message \`#${entry.original_id}\``)],
+            components: [
+                new MessageActionRow().addComponents([sort_select]),
+                new MessageActionRow().addComponents([prev_button, index_button, next_button, link_button, refresh_button])
+            ],
+            ephemeral: true
+        });
+        return;
+    }
+
+    const embed = await createStarboardEmbed(message, entry.count);
 
     await replyOrUpdate({
         embeds: [embed],
