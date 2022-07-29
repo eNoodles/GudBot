@@ -9,7 +9,12 @@ const ids = {
     channels: {
         admin: '978666603677896764',
         starboard: '993917733265756211',
-        records: '986712503935447130'
+        records: '986712503935447130',
+        downloads: '486202559951011870',
+        user_help: '888387032043376671',
+        general: '888383950702149662',
+        rules: '552982479212904448',
+        screenshot_content: '888386752648196116'
     },
 
     roles: {
@@ -29,6 +34,15 @@ const ids = {
 
     commands: {
         ping: '1001289025149210624'
+    },
+
+    errors: {
+        /**DiscordAPIError: Unknown Message*/
+        unknown_message: 10008,
+        /**DiscordAPIError: Missing Access*/
+        missing_access: 50001,
+        /**DiscordAPIError: Cannot send messages to this user*/
+        cannot_send_to_user: 50007
     }
 };
 
@@ -40,7 +54,12 @@ const ids = {
 //     channels: {
 //         admin: '860181373468540948',
 //         starboard: '888515334015942676',
-//         records: '746696906314612807'
+//         records: '746696906314612807',
+//         downloads: '486202559951011870',
+//         user_help: '888387032043376671',
+//         general: '888383950702149662',
+//         rules: '552982479212904448',
+//         screenshot_content: '888386752648196116'
 //     },
 
 //     roles: {
@@ -60,6 +79,15 @@ const ids = {
 
 //     commands: {
 //         ping: ''
+//     },
+
+//     errors: {
+//         /**DiscordAPIError: Unknown Message*/
+//         unknown_message: 10008,
+//         /**DiscordAPIError: Missing Access*/
+//         missing_access: 403,
+//         /**DiscordAPIError: Cannot send messages to this user*/
+//         cannot_send_to_user: 50007
 //     }
 // };
 
@@ -86,7 +114,7 @@ async function cacheChannels(client) {
         const id = ids.channels[prop];
         const cache_channel = client.channels.fetch(id)
             .then(channel => channels_cache.set(id, channel))
-            .catch(console.error);
+            .catch(e => logUnless(e, ids.errors.missing_access));
         promises.push(cache_channel);
     }
     await Promise.allSettled(promises);
@@ -110,11 +138,12 @@ function getUnixTimestamp(date) {
 }
 
 /**
- * Log error unless code is 10008 (DiscordAPIError: Unknown Message)
- * @param {Error} e 
+ * Log error unless it's code matches one of entered
+ * @param {Error} e The error itself
+ * @param {...number} codes
  */
-function logUnlessUnknown(e) {
-    if (e.code !== 10008) console.error(e);
+function logUnless(e, ...codes) {
+    if (!codes.includes(e.code)) console.error(e);
 }
 
 /**
@@ -326,7 +355,7 @@ module.exports = {
     cacheChannels,
     getCachedChannel,
     getUnixTimestamp,
-    logUnlessUnknown,
+    logUnless,
     hasRole,
     isAdmin,
     getMemberFullName,
