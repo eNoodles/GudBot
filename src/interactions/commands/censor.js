@@ -359,7 +359,8 @@ module.exports = {
                 }
 
                 break;
-            case 'list':
+            //case 'list':
+            default:
                 //fetch all entries from blacklist and whitelist tables
                 const [blacklist_entries, whitelist_entries] = await Promise.all([blacklist.findAll(), whitelist.findAll()]);                
 
@@ -396,13 +397,6 @@ module.exports = {
                 await interaction.reply({
                     embeds: [embed],
                     ephemeral: options.getBoolean('ephemeral')
-                });
-
-                break;
-            default:
-                await interaction.reply({
-                    embeds: [createErrorEmbed(`Something has gone wrong, received invalid command \`/censor ${subcommand}\``)],
-                    ephemeral: true
                 });
         }
     }
