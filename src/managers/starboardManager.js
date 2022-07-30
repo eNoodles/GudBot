@@ -383,7 +383,7 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
     const link_button = new MessageButton()
         .setLabel(`Open`)
         .setStyle(ButtonStyle.Link)
-        .setURL(entry?.url ?? '')
+        .setURL(entry?.url ?? 'https://discord.com/')
         .setDisabled(!entry);
 
     //refresh button for retrying to fetch starboard entries
