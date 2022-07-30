@@ -1,5 +1,6 @@
 const { Client, Message } = require('discord.js');
 const { getBlacklist, checkWhitelists } = require('../managers/censorManager');
+const { logUnless, ids } = require('../utils');
 
 module.exports = {
     /**
@@ -16,7 +17,7 @@ module.exports = {
             //if anyone tries to be a smartass and edit in uncensored words, just delete the message
             //check whitelist and make sure regexp isnt empty
             if (!checkWhitelists(new_message) && regexp.source !== '(?:)' && new_message.content.search(regexp) > -1) {
-                new_message.delete().catch(console.error);
+                new_message.delete().catch(e => logUnless(e, ids.errors.unknown_message));
             }
         }
 	}

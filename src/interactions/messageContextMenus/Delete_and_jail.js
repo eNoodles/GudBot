@@ -3,7 +3,7 @@ const { MessageContextMenuInteraction, TextInputComponent, Modal, MessageActionR
 const { PermissionFlagsBits, ButtonStyle } = require('discord-api-types/v10');
 const { censored_authors_cache } = require('../../managers/censorManager');
 const { getJailDataByMember } = require('../../managers/jailManager');
-const { createErrorEmbed, ids, colors, isAdmin } = require('../../utils');
+const { createErrorEmbed, ids, colors, isAdmin, logUnless } = require('../../utils');
 
 module.exports = {
     data: new ContextMenuCommandBuilder()
@@ -18,7 +18,7 @@ module.exports = {
         const message = interaction.targetMessage;
 
         //delete message no matter what happens with the jailing process
-        message.delete().catch(console.error);
+        message.delete().catch(e => logUnless(e, ids.errors.unknown_message));
 
         let member = message.member;
 

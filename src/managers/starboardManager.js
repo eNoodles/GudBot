@@ -74,7 +74,7 @@ async function createStarboardEmbed(message, count) {
     //prepend fake reply to beginning of message content
     if (message.type === 'REPLY') {
         //catch exception if reply isnt found (non critical error)
-        const replied_msg = await message.fetchReference().catch(console.error);
+        const replied_msg = await message.fetchReference().catch(e => logUnless(e, ids.errors.unknown_message));
         content = prependFakeReply(content, replied_msg);
     }
 

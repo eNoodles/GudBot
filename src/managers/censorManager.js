@@ -1,6 +1,6 @@
 const { Message, TextChannel, Webhook, Collection } = require('discord.js');
 const { blacklist, whitelist } = require('../database/dbObjects');
-const { ids, prependFakeReply, findLastSpaceIndex, getGuildUploadLimit } = require('../utils');
+const { ids, prependFakeReply, findLastSpaceIndex, getGuildUploadLimit, logUnless } = require('../utils');
 const { addToMessageGroups } = require('./spamManager');
 
 let blacklist_regexp = new RegExp('', 'ig');
@@ -444,7 +444,7 @@ async function censorMessage(message) {
     //prepend fake reply to beginning of censored message content
     if (message.type === 'REPLY') {
         //catch exception if reply isnt found (non critical error)
-        const replied_msg = await message.fetchReference().catch(console.error);
+        const replied_msg = await message.fetchReference().catch(e => logUnless(e, ids.errors.unknown_message));
         censored = prependFakeReply(censored, replied_msg);
     }
 
@@ -480,7 +480,8 @@ async function censorMessage(message) {
     if (!censored_followup && attachments.length > 0) message_options.files = attachments;
 
     //delete user's original uncensored message
-    message.delete().catch(console.error);
+    message.delete().catch(e => logUnless(e, ids.errors.unknown_message));
+    console.log('deleting uncensored');
 
     //await for fetch_hook resolve
     const hook = await fetch_hook;
@@ -517,6 +518,7 @@ async function censorMessage(message) {
         );
     }
 
+    console.log('sending censored');
     //await both messages to be sent
     const has_sent = await Promise.all(send);
 

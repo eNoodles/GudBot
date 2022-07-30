@@ -607,7 +607,7 @@ async function createDeletedMessageEmbed(message) {
     if (message.type === 'REPLY') {
         //try checking cache before fetching message
         //catch exception if reply isnt found (non critical error)
-        const replied_msg = deleted_cache.get(message.reference.messageId) || await message.fetchReference().catch(console.error);
+        const replied_msg = deleted_cache.get(message.reference.messageId) || await message.fetchReference().catch(e => logUnless(e, ids.errors.unknown_message));
         content = prependFakeReply(content, replied_msg);
     }
 
