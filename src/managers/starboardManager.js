@@ -212,7 +212,7 @@ async function updateStarboard(reaction, user) {
  * @param {string} [user_id] ID of user for which to filter starboard entries
  * @param {string} [channel_id] ID of channel for which to filter starboard entries
  * @param {string} selected_sort_value Select Menu's selected option value
- * @param {number} entry ID of entry relative to which to get previous/next entry
+ * @param {number} entry_id ID of entry relative to which to get previous/next entry
  * @param {number} offset Offset index of entry by this much {+1|0|-1}
  */
 async function getRelativeEntry(user_id, channel_id, selected_sort_value, entry_id, offset) {
@@ -362,28 +362,29 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
         //.setEmoji('◀️')
         .setEmoji('1000438084225212437')
         .setStyle(ButtonStyle.Primary)
-        .setCustomId(`starboardNavigate|${entry.id}|-1`)
-        .setDisabled(is_first);
+        .setCustomId(`starboardNavigate|${entry?.id ?? ''}|-1`)
+        .setDisabled(is_first ?? !entry);
 
     const next_button = new MessageButton()
         //.setEmoji('▶️')
         .setEmoji('1000438069993934951')
         .setStyle(ButtonStyle.Primary)
-        .setCustomId(`starboardNavigate|${entry.id}|1`)
-        .setDisabled(is_last);
+        .setCustomId(`starboardNavigate|${entry?.id ?? ''}|1`)
+        .setDisabled(is_last ?? !entry);
 
     //display relative #
     const index_button = new MessageButton()
         .setLabel(`${index + 1}`) //index starts at 0 but we want display to start at 1
         .setStyle(ButtonStyle.Primary)
         .setCustomId(`starboardIndex`)
-        .setDisabled();
+        .setDisabled(true);
 
     //url button to original message
     const link_button = new MessageButton()
         .setLabel(`Open`)
         .setStyle(ButtonStyle.Link)
-        .setURL(entry.url);
+        .setURL(entry.url)
+        .setDisabled(!entry);
 
     //refresh button for retrying to fetch starboard entries
     const refresh_button = new MessageButton()
@@ -399,7 +400,7 @@ async function updateStarboardViewer(interaction, starboard_options = {}) {
             embeds: [createErrorEmbed('No starboard entry found.', 'Try changing the sorting options.')],
             components: [
                 new MessageActionRow().addComponents([sort_select]),
-                new MessageActionRow().addComponents([refresh_button])
+                new MessageActionRow().addComponents([prev_button, index_button, next_button, link_button, refresh_button])
             ],
             ephemeral: true
         });
