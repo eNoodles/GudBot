@@ -481,7 +481,6 @@ async function censorMessage(message) {
 
     //delete user's original uncensored message
     message.delete().catch(e => logUnless(e, ids.errors.unknown_message));
-    console.log('deleting uncensored');
 
     //await for fetch_hook resolve
     const hook = await fetch_hook;
@@ -518,7 +517,6 @@ async function censorMessage(message) {
         );
     }
 
-    console.log('sending censored');
     //await both messages to be sent
     const has_sent = await Promise.all(send);
 
