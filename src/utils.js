@@ -294,11 +294,11 @@ function prependFakeReply(content, replied_msg, max_length=200) {
  */
 function generateFileLinks(message) {
     //get non image attachments
-    const files = message?.attachments?.filter(file => !file.contentType.startsWith('image'));
+    const files = message?.attachments?.filter(file => !file.contentType?.startsWith('image'));
     if (files?.size > 0) {
         let files_str = '';
         //use proxy url for videos in case original attachment has been deleted
-        files.forEach(file => files_str += `[${file.name}](${file.contentType.startsWith('video') ? file.proxyURL : file.url})\n`);
+        files.forEach(file => files_str += `[${file.name}](${file.contentType?.startsWith('video') ? file.proxyURL : file.url})\n`);
         return files_str;
     }
     else return '';
