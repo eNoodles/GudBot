@@ -300,7 +300,7 @@ function parseContent(content) {
         const end_index = index + word.length;
         //find all splitter reinsertions that are within word bounds (including last char after word)
         const inner_re = reinsertions.filter(e => e.is_splitter && e.lookup_idx >= index && e.lookup_idx <= end_index);
-        //if exactly 2 splitters found, and neither of them are at the first or last index, then this is most like a false positive
+        //if exactly 2 splitters found, and neither of them are at the first or last index, then this is most likely a false positive
         //this is to avoid situations like 'what kind oF A Guy'
         if (inner_re.length === 2 && inner_re.every(e => e.lookup_idx !== index && e.lookup_idx !== end_index)) return word;
 
@@ -309,9 +309,9 @@ function parseContent(content) {
         //check if word ends on repeating letter (ex: testsss)
         const repeating_suffix = index + word.search(/([A-Za-z])\1+$/);
 
-        //will be prepended to censored word at the end if necessary
+        //prefix will be prepended to censored word at the end if necessary
         let prefix = '';
-        //will be appended to censored word at the end if necessary
+        //suffix will be appended to censored word at the end if necessary
         let suffix = '';
 
         //if not found, repeating idx will be index - 1, hence the >=
@@ -367,10 +367,10 @@ function parseContent(content) {
         //join censored chars together
         const censored_word = chars.join('');
 
-        //if word consisted of surrogative pairs, it will be shorter after censorship
+        //if word consisted of surrogate pairs, it will be shorter after censorship
         const length_diff = word.length - censored_word.length;
 
-        //if length_diff != 0
+        //if length of censored word is not the same as the original
         if (length_diff) {
             //index of first char after word (don't use previous value as it may have changed)
             const end_index = index + word.length;
