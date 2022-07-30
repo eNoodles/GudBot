@@ -59,7 +59,7 @@ async function createStarboardEmbed(message, count) {
         .setTimestamp(message.createdTimestamp);
 
     //if message had an image attachment, we want to prioritize that as the embed's image
-    const image = message.attachments?.find(file => file.contentType.startsWith('image'));
+    const image = message.attachments?.find(file => file.contentType?.startsWith('image'));
     if (image)
         embed.setImage(image.proxyURL);
     //otherwise we check for image urls in the text content (they would have been embedded normally)
