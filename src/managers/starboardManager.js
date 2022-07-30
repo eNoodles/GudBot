@@ -294,7 +294,7 @@ async function getRelativeEntry(user_id, channel_id, selected_sort_value, entry_
     index += offset;
 
     //clamp index within array size
-    index = Math.min(Math.max(index, 0), sorted.length - 1);
+    index = Math.min(Math.max(index, 0), Math.max(sorted.length - 1, 0));
 
     //if entry isn't found, the index will either be 
     //-1 - 1 = -2, which gets clamped to 0
