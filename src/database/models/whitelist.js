@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-	return sequelize.define('0000_whitelist', {
+	return sequelize.define('whitelist', {
         id: {
             type: DataTypes.STRING,
             unique: true,

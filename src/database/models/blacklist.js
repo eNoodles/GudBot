@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-	return sequelize.define('0000_blacklist', {
+	return sequelize.define('blacklist', {
         word: {
             type: DataTypes.STRING,
             unique: true

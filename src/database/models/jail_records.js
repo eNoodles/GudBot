@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-	return sequelize.define('0000_jail_records', {
+	return sequelize.define('jail_records', {
         offender_id: DataTypes.STRING,
         jailer_id: DataTypes.STRING,
         reason: DataTypes.STRING(512),

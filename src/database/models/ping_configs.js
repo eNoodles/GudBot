@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-	return sequelize.define('0000_ping_configs', {
+	return sequelize.define('ping_configs', {
         id: {
             type: DataTypes.STRING,
             unique: true,

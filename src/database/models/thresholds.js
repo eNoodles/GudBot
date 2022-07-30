@@ -1,5 +1,5 @@
 module.exports = (sequelize, DataTypes) => {
-	return sequelize.define('0000_thresholds', {
+	return sequelize.define('thresholds', {
         type: {
             type: DataTypes.STRING,
             unique: true
