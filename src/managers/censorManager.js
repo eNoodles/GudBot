@@ -296,6 +296,14 @@ function parseContent(content) {
 
     //replace blacklisted words with stars
     let censored = content.replace(blacklist_regexp, (word, index) => {
+        //index of first char after word
+        const end_index = index + word.length;
+        //find all splitter reinsertions that are within word bounds (including last char after word)
+        const inner_re = reinsertions.filter(e => e.is_splitter && e.lookup_idx >= index && e.lookup_idx <= end_index);
+        //if exactly 2 splitters found, and neither of them are at the first or last index, then ignore word
+        //this is to avoid situations like 'what kind oF A Guy'
+        if (inner_re.length === 2 && inner_re.every(e => e.lookup_idx !== index && e.lookup_idx !== end_index)) return word;
+
         //check if word begins with repeating letter (ex: tttest)
         const repeating_prefix = index + word.search(/^([A-Za-z])\1+/);
         //check if word ends on repeating letter (ex: testsss)
@@ -311,9 +319,6 @@ function parseContent(content) {
         let look_for_suffix = repeating_suffix >= index;
 
         if (look_for_prefix || look_for_suffix) {
-            //index of first char after word
-            const end_index = index + word.length;
-
             //look for repeating prefix before this index
             const repeating_prefix_end = look_for_suffix ? repeating_suffix : end_index;
 
@@ -367,7 +372,7 @@ function parseContent(content) {
 
         //if length_diff != 0
         if (length_diff) {
-            //index of first char after word (may have changed, which is why I don't use the previous one)
+            //index of first char after word (don't use previous value as it may have changed)
             const end_index = index + word.length;
 
             //adjust reinsertion indexes of strings that come after word
