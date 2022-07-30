@@ -33,7 +33,7 @@ const ids = {
     },
 
     commands: {
-        ping: ''
+        ping: '1002731738130297007'
     },
 
     errors: {
