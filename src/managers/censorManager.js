@@ -300,7 +300,7 @@ function parseContent(content) {
         const end_index = index + word.length;
         //find all splitter reinsertions that are within word bounds (including last char after word)
         const inner_re = reinsertions.filter(e => e.is_splitter && e.lookup_idx >= index && e.lookup_idx <= end_index);
-        //if exactly 2 splitters found, and neither of them are at the first or last index, then ignore word
+        //if exactly 2 splitters found, and neither of them are at the first or last index, then this is most like a false positive
         //this is to avoid situations like 'what kind oF A Guy'
         if (inner_re.length === 2 && inner_re.every(e => e.lookup_idx !== index && e.lookup_idx !== end_index)) return word;
 
