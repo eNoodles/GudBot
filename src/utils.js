@@ -3,13 +3,13 @@ const { PermissionFlagsBits } = require('discord-api-types/v10');
 const Sleep = require('node:timers/promises').setTimeout;
 
 const ids = {
-    client: '822565220190650379',
-    guild: '822148574032298064',
+    client: '854851650212724748',
+    guild: '364164445657890816',
 
     channels: {
-        admin: '978666603677896764',
-        starboard: '1002637240020770917',
-        records: '986712503935447130',
+        admin: '860181373468540948',
+        starboard: '888515334015942676',
+        records: '746696906314612807',
         downloads: '486202559951011870',
         user_help: '888387032043376671',
         general: '888383950702149662',
@@ -20,7 +20,7 @@ const ids = {
     roles: {
         lurker: '523883593978609704',
         gmteam: '409531885119864832',
-        jailed: '865603749393334283',
+        jailed: '603983150011514979',
         blankicon: '894731175216701450'
     },
 
@@ -33,63 +33,18 @@ const ids = {
     },
 
     commands: {
-        ping: '1001289025149210624'
+        ping: ''
     },
 
     errors: {
         /**DiscordAPIError: Unknown Message*/
         unknown_message: 10008,
         /**DiscordAPIError: Missing Access*/
-        missing_access: 50001,
+        missing_access: 403,
         /**DiscordAPIError: Cannot send messages to this user*/
         cannot_send_to_user: 50007
     }
 };
-
-// GudMods
-// const ids = {
-//     client: '822565220190650379',
-//     guild: '364164445657890816',
-
-//     channels: {
-//         admin: '860181373468540948',
-//         starboard: '888515334015942676',
-//         records: '746696906314612807',
-//         downloads: '486202559951011870',
-//         user_help: '888387032043376671',
-//         general: '888383950702149662',
-//         rules: '552982479212904448',
-//         screenshot_content: '888386752648196116'
-//     },
-
-//     roles: {
-//         lurker: '523883593978609704',
-//         gmteam: '409531885119864832',
-//         jailed: '603983150011514979',
-//         blankicon: '894731175216701450'
-//     },
-
-//     users: {
-//         eNoodles: '206024596997144576'
-//     },
-
-//     emojis: {
-//         error: '1000033728531267615'
-//     },
-
-//     commands: {
-//         ping: ''
-//     },
-
-//     errors: {
-//         /**DiscordAPIError: Unknown Message*/
-//         unknown_message: 10008,
-//         /**DiscordAPIError: Missing Access*/
-//         missing_access: 403,
-//         /**DiscordAPIError: Cannot send messages to this user*/
-//         cannot_send_to_user: 50007
-//     }
-// };
 
 const colors = {
     red: 16711680,
