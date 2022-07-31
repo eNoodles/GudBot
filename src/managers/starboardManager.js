@@ -294,7 +294,8 @@ async function getRelativeEntry(user_id, channel_id, selected_sort_value, entry_
     index += offset;
 
     //clamp index within array size
-    index = Math.min(Math.max(index, 0), Math.max(sorted.length - 1, 0));
+    const sorted_length = Math.max(sorted.length - 1, 0);
+    index = Math.min(Math.max(index, 0), sorted_length);
 
     //if entry isn't found, the index will either be 
     //-1 - 1 = -2, which gets clamped to 0
@@ -306,7 +307,7 @@ async function getRelativeEntry(user_id, channel_id, selected_sort_value, entry_
         entry: sorted[index], //next/previous/current entry
         index: index, //to display # button
         is_first: index === 0, //if entry is first (disable prev button)
-        is_last: index === sorted.length - 1 //if entry is last (disable next button)
+        is_last: index === sorted_length //if entry is last (disable next button)
     };
 }
 
