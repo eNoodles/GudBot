@@ -43,7 +43,12 @@ async function fetchStarboardEntry(original_id) {
  * @returns {Promise<MessageEmbed>}
  */
 async function createStarboardEmbed(message, count) {
-    let { content, member, author } = message;
+    let { content, member, author, embeds } = message;
+
+    if (!content && embeds[0]) {
+        //if message content is empty and message had an embed, use the embeds description as content
+        content = embeds[0].description;
+    }
 
     const embed = new MessageEmbed()
         .setColor(member?.displayHexColor ?? colors.gray)
@@ -59,7 +64,7 @@ async function createStarboardEmbed(message, count) {
         .setTimestamp(message.createdTimestamp);
 
     //if message had an image attachment, we want to prioritize that as the embed's image
-    const image = message.attachments?.find(file => file.contentType?.startsWith('image'));
+    const image = message.attachments?.find(file => file.contentType?.startsWith('image')) || embeds[0]?.image;
     if (image)
         embed.setImage(image.proxyURL);
     //otherwise we check for image urls in the text content (they would have been embedded normally)
