@@ -145,13 +145,13 @@ function generateBlacklist() {
 
                             //convert range set to full set
                             //ex: [a-d] => [abcd]
-                            set = set ? set.replace(/([A-Za-z])-([A-Za-z])/g, (match, range_start, range_end) => {
+                            set = set?.replace(/([A-Za-z])-([A-Za-z])/g, (match, range_start, range_end) => {
                                 let range_all = '';
                                 const first_code = range_start.charCodeAt(0);
                                 const last_code = range_end.charCodeAt(0);
                                 for (let i = first_code; i <= last_code; i++) range_all += String.fromCharCode(i);
                                 return range_all;
-                            }) : null;
+                            });
 
                             //finds confusables and spreads them into array or just returns the char itself
                             const chars = [...(set ?? single)].flatMap(char => confusables.find(set => set[0] === char) ?? char);
@@ -272,14 +272,14 @@ function parseContent(content) {
     //custom emojis:    <:\w{2,32}:[0-9]{17,19}>
     //urls:             https?:\/\/\w{2}\S+
     //whitespace:       \s+
-    //formatters:       [*~`|]+
+    //formatters:       (?:[*~`]|\|\|)+
     //special chars:    [!@#$%^&()\-_+={}\[\]\\/:;'"<>,.?…‚„ˆ‹›‘’“”•–—˜™¦¨«¬¯´·¸»¿]+
     //diacratic:        [\u0300-\u036f\u0610-\u061a\u064b-\u065f\u06d6-\u06dc\u06df-\u06e4\u06e7\u06e8\u06ea-\u06ed\ufe20-\ufe23\u1dc0-\u1dca\u1dfe\u1dff\u20d0-\u20dc\u20e1\u20e8-\u20ea\u20f0]
     //
     //remove and do NOT reinsert
     //zero-width chars: [\u200b-\u200f\u2060-\u2064\u206a-\u206f\u17b4-\u17b5\u00ad\u034f\u061c\u180e]+
     content = content.replace(
-        /(<:\w{2,32}:[0-9]{17,19}>)|(https?:\/\/\w{2}\S+)|(\s+)|([*~`|]+)|([\u0021-\u0029\u002b-\u002f\u003a-\u0040\u005b-\u005f\u007b\u007d\u00a6\u00a8\u00ab\u00ac\u00af\u00b4\u00b7\u00b8\u00bb\u00bf\u02c6\u02dc\u2013\u2014\u2018\u2019\u201a\u201c\u201d\u201e\u2022\u2026\u2039\u203a\u2122]+)|([\u0300-\u036f\u0610-\u061a\u064b-\u065f\u06d6-\u06dc\u06df-\u06e4\u06e7\u06e8\u06ea-\u06ed\ufe20-\ufe23\u1dc0-\u1dca\u1dfe\u1dff\u20d0-\u20dc\u20e1\u20e8-\u20ea\u20f0]+)|[\u200b-\u200f\u2060-\u2064\u206a-\u206f\u17b4-\u17b5\u00ad\u034f\u061c\u180e]+/g, 
+        /(<:\w{2,32}:[0-9]{17,19}>)|(https?:\/\/\w{2}\S+)|(\s+)|((?:[*~`]|\|\|)+)|([\u0021-\u0029\u002b-\u002f\u003a-\u0040\u005b-\u005f\u007b\u007d\u00a6\u00a8\u00ab\u00ac\u00af\u00b4\u00b7\u00b8\u00bb\u00bf\u02c6\u02dc\u2013\u2014\u2018\u2019\u201a\u201c\u201d\u201e\u2022\u2026\u2039\u203a\u2122]+)|([\u0300-\u036f\u0610-\u061a\u064b-\u065f\u06d6-\u06dc\u06df-\u06e4\u06e7\u06e8\u06ea-\u06ed\ufe20-\ufe23\u1dc0-\u1dca\u1dfe\u1dff\u20d0-\u20dc\u20e1\u20e8-\u20ea\u20f0]+)|[\u200b-\u200f\u2060-\u2064\u206a-\u206f\u17b4-\u17b5\u00ad\u034f\u061c\u180e]+/g, 
         (match, emoji, url, spaces, formatters, special, diacratic, index) => {
             //save everything but zero width chars for reinsertion later
             if (emoji ?? url ?? spaces ?? formatters ?? special ?? diacratic) {
